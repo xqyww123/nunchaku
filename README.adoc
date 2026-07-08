@@ -2,7 +2,7 @@
 :toc: macro
 :source-highlighter: pygments
 
-image::https://github.com/nunchaku-inria/nunchaku/workflows/build/badge.svg[Build status on github]
+image::https://github.com/nunchaku-inria/nunchaku/actions/workflows/main.yml/badge.svg?branch=main[Build status on GitHub]
 
 A counter-example finder for higher-order logic, designed to be used from
 various proof assistants. A spiritual successor to Nitpick.
