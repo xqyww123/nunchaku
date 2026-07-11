@@ -34,25 +34,27 @@ jobs:
     needs: run
     timeout-minutes: 30
     runs-on: ubuntu-latest
-    container: ghcr.io/c-cube/c-cube-commmon/ci-5.4:latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.1.x
+          dune-cache: true
+          allow-prerelease-opam: true
 
       - run: opam install -t . --deps-only
 
       - name: Install CVC4 1.6
         run: |
-          apt-get update -qq
-          apt-get install -y -qq wget
           wget http://cvc4.cs.stanford.edu/downloads/builds/x86_64-linux-opt/cvc4-1.6-x86_64-linux-opt
           chmod +x cvc4-1.6-x86_64-linux-opt
-          mv cvc4-1.6-x86_64-linux-opt /usr/local/bin/cvc4
+          sudo mv cvc4-1.6-x86_64-linux-opt /usr/local/bin/cvc4
 
       - name: Install benchexec
         run: |
-          apt-get install -y -qq software-properties-common
-          add-apt-repository -y ppa:sosy-lab/benchmarking
-          apt-get install -y -qq benchexec
+          sudo add-apt-repository -y ppa:sosy-lab/benchmarking
+          sudo apt-get install -y benchexec
 
       - name: Build
         run: opam exec -- dune build @install --profile=release
