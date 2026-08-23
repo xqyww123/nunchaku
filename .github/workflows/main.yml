@@ -58,7 +58,10 @@ jobs:
       - name: Build (version substituted, static, stripped)
         run: |
           opam exec -- dune subst
-          opam exec -- dune build @install --profile=release
+          # ocaml-option-static alone leaves the final link dynamic (measured:
+          # a musl PIE with interpreter /lib/ld-musl-x86_64.so.1); OCAMLPARAM
+          # injects -static into ocamlopt's C-linker invocation.
+          opam exec -- env OCAMLPARAM="_,ccopt=-static" dune build @install --profile=release
           cp _build/default/src/main/nunchaku.exe nunchaku-bin
           strip nunchaku-bin
 
