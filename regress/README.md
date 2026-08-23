@@ -103,6 +103,14 @@ baseline cell-for-cell, with `none/unknown → genuine` allowed only on
 false-labelled goals; the 1 s tier is reported, not gated; timings are
 advisory (3× median ratchet).
 
+Run on a **quiet machine**.  A few Nitpick cells sit just under the 5 s
+budget (`ls7` and `d11` finish around 4.6 s), and concurrent load tips
+them from `none` into `unknown`, failing the 5 s identity check for a
+reason that has nothing to do with the build under test (measured: both
+flipped under load, both matched the baseline on a quiet re-run).  If
+only such near-budget Nitpick cells differ, re-run those arms quietly
+before drawing any conclusion.
+
 If the run improved on the baseline (allowed drifts only), refresh
 `baseline/` from the new TSVs in the same commit that explains why.
 
