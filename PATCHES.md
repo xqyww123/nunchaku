@@ -78,3 +78,15 @@ at the next sync.  Base commit: d23a876.
   `val ys_ := Cons_ $a__0 ?__117.`
 - **Upstream PR**: https://github.com/nunchaku-inria/nunchaku/pull/59 (open).
 
+
+## 5. `--version` placeholder never expanded (`src/main/dune`)
+
+- **Motivation**: the `Const.ml` generation rule echoes `${version:nunchaku}`
+  literally — dune 2 variables are `%{...}` — so `--version` has printed the
+  raw placeholder since the dune 2 migration.  Cosmetic for the Isabelle
+  frontend (it never calls `--version`), but release hygiene: the CI smoke
+  asserts the placeholder is gone.
+- **Repro**: `nunchaku --version`; before:
+  `nunchaku ${version:nunchaku} <sha>`; after: `nunchaku 0.6 <sha>`
+  (dev checkout) / the tag version (released build, via `dune subst`).
+- **Upstream PR**: https://github.com/nunchaku-inria/nunchaku/pull/60 (open).
