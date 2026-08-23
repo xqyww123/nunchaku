@@ -1,16 +1,23 @@
 #!/usr/bin/env bash
-# Usage: run.sh <workdir>
+# Usage: run.sh <workdir> [gold]
 #
-# Runs the full benchmark (78 goals: bench.ML over Main + bench2.ML over
-# DTBench) against the component under test and aggregates the RESULT lines
-# into <workdir>/results.tsv, results_datatypes.tsv and summaries.
+# Runs the gold smoke test (NunGold.thy) and then the full benchmark
+# (78 goals: bench.ML over Main + bench2.ML over DTBench) against the
+# component under test, aggregating the RESULT lines into
+# <workdir>/results.tsv, results_datatypes.tsv and summaries.
+# With "gold" as second argument, stops after the gold test.
 #
 # Prerequisites (see README.md):
-#   - the bash server is running and wrote <workdir>/bash_server_addr.txt
 #   - $NUNCHAKU_COMPONENT points at the component to test
 #     (default: ../component next to this script -- only valid once the
 #     packaging artifacts have been dropped into it)
 #   - $ISABELLE names the isabelle executable (default: isabelle in PATH)
+#
+# The bash server both engines need is started (and stopped) by this
+# script itself.  It MUST live in the same environment as the runs --
+# bash_process expands "$NUNCHAKU_HOME" on the server side, so a server
+# started from the real home would silently run the distribution's
+# bundled 2017 binary instead of the component under test.
 #
 # The script bootstraps an isolated ISABELLE_HOME_USER under <workdir>:
 # it COPIES the real ~/.isabelle preferences first (a scratch user dir
@@ -44,16 +51,26 @@ printf '%s\n' "$COMP" > "$FAKE_ETC/components"
 
 export USER_HOME="$WORK/fakehome" HOME="$WORK/fakehome"
 
-ML64=$("$ISA" getenv -b ML_system_64)
+ML64=$("$ISA" options -g ML_system_64)
 [ "$ML64" = true ] || { echo "run.sh: ML_system_64=$ML64 (want true); aborting" >&2; exit 1; }
 NUNHOME=$("$ISA" getenv -b NUNCHAKU_HOME)
 [ "$NUNHOME" = "$COMP/x86_64-linux" ] || {
   echo "run.sh: NUNCHAKU_HOME=$NUNHOME does not point at $COMP/x86_64-linux" >&2; exit 1; }
 
+rm -f "$WORK/bash_server_addr.txt"
+"$ISA" scala "$REGRESS/bash_server_main.scala" "$WORK/bash_server_addr.txt" \
+  > "$WORK/bash_server.log" 2>&1 &
+BS_PID=$!
+trap 'kill "$BS_PID" 2>/dev/null || true' EXIT
+for _ in $(seq 1 180); do
+  grep -q BASH_SERVER_READY "$WORK/bash_server.log" 2>/dev/null && break
+  kill -0 "$BS_PID" 2>/dev/null || break
+  sleep 1
+done
+grep -q BASH_SERVER_READY "$WORK/bash_server.log" || {
+  echo "run.sh: bash server failed to start, see $WORK/bash_server.log" >&2; exit 1; }
 ADDR=$(sed -n 1p "$WORK/bash_server_addr.txt")
 PW=$(sed -n 2p "$WORK/bash_server_addr.txt")
-[ -n "$ADDR" ] && [ -n "$PW" ] || {
-  echo "run.sh: bad $WORK/bash_server_addr.txt (is the bash server running?)" >&2; exit 1; }
 
 # run one ML file in a HOL ML_process (theory context Main), logging RESULT lines
 run_ml () { # <ml-file> <logfile>
@@ -69,6 +86,21 @@ run_arm () { # <ml-file> <prefix> <engine> <tier>
   BENCH_ENGINE=$3 BENCH_TIER=$4 run_ml "$REGRESS/$1" "$WORK/${2}_${3}_${4}.log" || rc=$?
   echo "ARM_END $2 $3 $4 rc=$rc results=$(grep -c '^RESULT' "$WORK/${2}_${3}_${4}.log" || true) $(date +%T)"
 }
+
+# gold smoke test first: fail fast before spending ~30 min on the arms
+echo "GOLD_START $(date +%T)"
+run_ml_gold_rc=0
+"$ISA" ML_process -l HOL -C "$REGRESS" \
+  -o bash_process_address="$ADDR" -o bash_process_password="$PW" \
+  -e 'Thy_Info.use_thy_legacy "NunGold"' \
+  > "$WORK/gold.log" 2>&1 || run_ml_gold_rc=$?
+if ! grep -q GOLD_OK "$WORK/gold.log"; then
+  echo "GOLD FAIL (rc=$run_ml_gold_rc), see $WORK/gold.log:" >&2
+  tail -5 "$WORK/gold.log" >&2
+  exit 1
+fi
+echo "GOLD_OK $(date +%T)"
+[ "${2:-}" = gold ] && exit 0
 
 for tier in 1 5; do
   for engine in nitpick nunchaku nunchaku_smbc; do

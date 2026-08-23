@@ -59,42 +59,34 @@ assembled one):
 smbc comes from the Isabelle distribution (`contrib/smbc-*`); the frontend
 puts it on the PATH itself.
 
-## 3. Start the bash server
-
-A bare `isabelle ML_process` has no `bash_process` environment, so neither
-engine can call its external tool without this step.  In a spare terminal
-(or backgrounded):
+## 3. Gold test (seconds; before anything else)
 
 ```bash
-isabelle scala regress/bash_server_main.scala <workdir>/bash_server_addr.txt
+./regress/run.sh <workdir> gold
 ```
 
-Wait for `BASH_SERVER_READY`; the file then holds address and password,
-which `run.sh` picks up.  Kill the process when done.
-(Do not pipe a script into `isabelle scala` instead: the REPL refuses to
-start without a terminal.)
-
-## 4. Gold test (seconds; before anything else)
-
-```bash
-HOME=<workdir>/fakehome USER_HOME=<workdir>/fakehome \
-  isabelle process -l HOL -o bash_process_address=... -o bash_process_password=... \
-  -e 'Thy_Info.use_thy "regress/NunGold"'
-```
-
-(`run.sh` bootstraps `<workdir>/fakehome` on first use; run it once with
-an already-assembled component if you want the gold test first — or load
+`NunGold.thy` raises on failure and prints `GOLD_OK` on success.  It
+asserts: verdict `genuine` on the false goal, model actually displayed,
+wall clock within cap, and a true goal not refuted.  (Alternative: load
 `NunGold.thy` in any PIDE session whose `NUNCHAKU_HOME` points at the
-component under test.)  `NunGold.thy` raises on failure and prints
-`GOLD_OK` on success.  It asserts: verdict `genuine` on the false goal,
-model actually displayed, wall clock within cap, and a true goal not
-refuted.  Import gotcha for all probe theories: write
+component under test.)  Import gotcha for all probe theories: write
 `imports "HOL.Nunchaku"` — a bare `imports Nunchaku` does not resolve.
 
-## 5. Full run and gate
+About the bash server: a bare `isabelle ML_process` has no `bash_process`
+environment, so neither engine could call its external tool.  `run.sh`
+starts the server itself (`bash_server_main.scala`) and stops it on exit.
+If you ever run one by hand, it must live in the same `HOME` (the
+`<workdir>/fakehome`) as the runs: `bash_process` expands
+`"$NUNCHAKU_HOME"` on the *server* side, so a server started from the
+real home silently substitutes the distribution's bundled 2017 binary
+for the component under test.  Also: do not pipe a script into
+`isabelle scala` — the REPL refuses to start without a terminal; pass
+the file as an argument as `run.sh` does.
+
+## 4. Full run and gate
 
 ```bash
-./regress/run.sh  <workdir>   # ~30 min; writes <workdir>/results*.tsv
+./regress/run.sh  <workdir>   # gold first, then ~30 min of arms
 ./regress/gate.sh <workdir>   # exit 0 = certified
 ```
 
@@ -114,7 +106,7 @@ advisory (3× median ratchet).
 If the run improved on the baseline (allowed drifts only), refresh
 `baseline/` from the new TSVs in the same commit that explains why.
 
-## 6. Release
+## 5. Release
 
 Follow `RELEASE_CHECKLIST.md` in the packaging repository
 (`isabelle-packaging-ci`); versions come from the `VERSION` file at the
