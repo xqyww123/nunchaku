@@ -1,0 +1,23 @@
+# The gold problem (Isabelle frontend rendering of "hd (xs @ ys) = hd xs"):
+# a countermodel must exist, and with smbc it exercises the model-unknown path.
+# complete
+# sound
+val a_ : type.
+
+data list_ :=
+  Nil_
+| Cons_ a_ list_.
+
+val xs_ : list_.
+val ys_ : list_.
+
+rec append_ : list_ -> list_ -> list_ :=
+  forall (ys1_ : list_). append_ Nil_ ys1_ = ys1_;
+  forall (x_ : a_) (xs1_ : list_) (ys1_ : list_). append_ (Cons_ x_ xs1_) ys1_ = Cons_ x_ (append_ xs1_ ys1_).
+rec hd_ : list_ -> a_ :=
+  forall (x21_ : a_) (x22_ : list_). hd_ (Cons_ x21_ x22_) = x21_.
+
+goal ~ (hd_ (append_ xs_ ys_) = hd_ xs_).
+
+# eval hd_ xs_.
+# eval hd_ (append_ xs_ ys_).

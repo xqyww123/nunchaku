@@ -15,19 +15,76 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        container:
-          - ghcr.io/c-cube/c-cube-commmon/ci-4.14:latest
-          - ghcr.io/c-cube/c-cube-commmon/ci-5.0:latest
-          - ghcr.io/c-cube/c-cube-commmon/ci-5.4:latest
+        ocaml-compiler:
+          - 4.14.x
+          - 5.0.x
+          - 5.4.x
 
     runs-on: ubuntu-latest
-    container: ${{ matrix.container }}
     steps:
       - uses: actions/checkout@v4
+
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+          dune-cache: true
 
       - run: opam install -t . --deps-only
       - run: opam exec -- dune build @install --profile=release
       - run: opam exec -- dune runtest --profile=release
+
+  release-binary:
+    name: static release binary (musl) + CLI smoke
+    timeout-minutes: 45
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ocaml-variants.4.14.2+options,ocaml-option-musl,ocaml-option-static
+          dune-cache: true
+
+      - run: opam install . --deps-only
+
+      - name: Build (version substituted, static, stripped)
+        run: |
+          opam exec -- dune subst
+          opam exec -- dune build @install --profile=release
+          cp _build/default/src/main/nunchaku.exe nunchaku-bin
+          strip nunchaku-bin
+
+      - name: Fetch cvc5 (pinned release)
+        run: |
+          curl -sSL -o cvc5.zip https://github.com/cvc5/cvc5/releases/download/cvc5-1.3.4/cvc5-Linux-x86_64-static.zip
+          echo "dcdbfada0ce493ee98259c0816e0daafc561c223aadb3af298c2968e73ea39c6  cvc5.zip" | sha256sum -c
+          unzip -q cvc5.zip
+
+      - name: CLI smoke
+        run: |
+          # really static?
+          ldd ./nunchaku-bin 2>&1 | grep -q "not a dynamic executable"
+          # dune subst worked? (unreleased checkouts print the literal placeholder)
+          ./nunchaku-bin --version
+          ./nunchaku-bin --version | grep -vq '\${version'
+          # the exact flag table the Isabelle frontend sends must parse, and the
+          # answer must keep the SAT / {backend:...} output shape
+          export NUNCHAKU_CVC5=$PWD/cvc5-Linux-x86_64-static/bin/cvc5
+          ./nunchaku-bin --skolems-in-model --no-color --no-specialize \
+            --solvers "cvc5,kodkod,paradox,smbc" --timeout 30 \
+            --kodkod-min-bound 4 --kodkod-max-bound 8 --kodkod-bound-increment 4 \
+            regress/gold.nun | tee smoke.out
+          grep -q '^SAT' smoke.out
+          grep -q '{backend:' smoke.out
+
+      - name: Upload release binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: nunchaku-bin-x86_64-linux
+          path: nunchaku-bin
+          retention-days: 90
 
   benchmark:
     name: benchmark
