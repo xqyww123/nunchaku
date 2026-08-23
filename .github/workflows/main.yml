@@ -49,7 +49,9 @@ jobs:
       - uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: ocaml-variants.4.14.2+options,ocaml-option-musl,ocaml-option-static
-          dune-cache: true
+          # no dune cache here: a release binary must never be able to come
+          # out of a cache shared with the glibc build-matrix jobs
+          dune-cache: false
 
       - run: opam install . --deps-only
 
@@ -68,8 +70,12 @@ jobs:
 
       - name: CLI smoke
         run: |
-          # really static?
-          ldd ./nunchaku-bin 2>&1 | grep -q "not a dynamic executable"
+          # really static?  (glibc ldd wording: "not a dynamic executable"
+          # for plain static, "statically linked" for static-PIE)
+          file ./nunchaku-bin
+          ldd ./nunchaku-bin > ldd.out 2>&1 || true
+          cat ldd.out
+          grep -Eq "not a dynamic executable|statically linked" ldd.out
           # dune subst worked? (unreleased checkouts print the literal placeholder)
           ./nunchaku-bin --version
           ./nunchaku-bin --version | grep -vq '\${version'
