@@ -1,0 +1,24 @@
+== Per class x engine x tier ==
+class	engine	tier	nF	genuine	quasi	potential	none/unk	err/toG	nT	SPURIOUS	medianMs	p90Ms
+datatype	nitpick	1	8	8	0	0	0	0	8	0	622	1397
+datatype	nitpick	5	8	8	0	0	0	0	8	0	604	5391
+datatype	nunchaku	1	8	6	0	0	2	0	8	0	1053	2012
+datatype	nunchaku	5	8	7	0	0	1	0	8	0	456	6015
+datatype	nunchaku_smbc	1	8	7	0	0	1	0	8	0	472	2013
+datatype	nunchaku_smbc	5	8	8	0	0	0	0	8	0	83	6017
+arith_bigwit	nitpick	1	4	0	0	0	4	0	1	0	48	52
+arith_bigwit	nitpick	5	4	0	0	0	4	0	1	0	49	50
+arith_bigwit	nunchaku	1	4	1	0	0	3	0	1	0	2013	2015
+arith_bigwit	nunchaku	5	4	1	0	0	3	0	1	0	6015	6017
+arith_bigwit	nunchaku_smbc	1	4	1	0	0	3	0	1	0	2012	2013
+arith_bigwit	nunchaku_smbc	5	4	1	0	0	3	0	1	0	6014	6015
+
+== Overall (false goals: genuine-rate; true goals: spurious count) ==
+nitpick tier=1s: false 8/12 genuine (67%), +0 quasi; SPURIOUS on true: 0 []; median 540ms p90 1383ms (median genuine-hit 534ms)
+nitpick tier=5s: false 8/12 genuine (67%), +0 quasi; SPURIOUS on true: 0 []; median 547ms p90 4541ms (median genuine-hit 543ms)
+nunchaku tier=1s: false 7/12 genuine (58%), +0 quasi; SPURIOUS on true: 0 []; median 2011ms p90 2013ms (median genuine-hit 43ms)
+nunchaku tier=5s: false 8/12 genuine (67%), +0 quasi; SPURIOUS on true: 0 []; median 6014ms p90 6017ms (median genuine-hit 45ms)
+nunchaku_smbc tier=1s: false 8/12 genuine (67%), +0 quasi; SPURIOUS on true: 0 []; median 2009ms p90 2013ms (median genuine-hit 44ms)
+nunchaku_smbc tier=5s: false 9/12 genuine (75%), +0 quasi; SPURIOUS on true: 0 []; median 94ms p90 6017ms (median genuine-hit 57ms)
+
+== Spurious detail (any true goal called genuine/quasi_genuine) ==

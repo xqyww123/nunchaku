@@ -1,0 +1,60 @@
+== Per class x engine x tier ==
+class	engine	tier	nF	genuine	quasi	potential	none/unk	err/toG	nT	SPURIOUS	medianMs	p90Ms
+arith_lin	nitpick	1	4	4	0	0	0	0	3	0	510	550
+arith_lin	nitpick	5	4	4	0	0	0	0	3	0	536	551
+arith_lin	nunchaku	1	4	3	0	0	1	0	3	0	2008	2019
+arith_lin	nunchaku	5	4	3	0	0	1	0	3	0	6012	6017
+arith_lin	nunchaku_smbc	1	4	4	0	0	0	0	3	0	1894	2013
+arith_lin	nunchaku_smbc	5	4	4	0	0	0	0	3	0	2663	6015
+arith_nl	nitpick	1	4	4	0	0	0	0	4	0	870	1357
+arith_nl	nitpick	5	4	4	0	0	0	0	4	0	1728	3664
+arith_nl	nunchaku	1	4	3	0	0	1	0	4	0	2010	2017
+arith_nl	nunchaku	5	4	3	0	0	1	0	4	0	6014	6022
+arith_nl	nunchaku_smbc	1	4	4	0	0	0	0	4	0	1139	2010
+arith_nl	nunchaku_smbc	5	4	4	0	0	0	0	4	0	5083	6015
+list	nitpick	1	5	5	0	0	0	0	3	0	584	1368
+list	nitpick	5	5	5	0	0	0	0	3	0	602	3454
+list	nunchaku	1	5	4	0	0	1	0	3	0	1172	2014
+list	nunchaku	5	5	5	0	0	0	0	3	0	703	6019
+list	nunchaku_smbc	1	5	5	0	0	0	0	3	0	387	2012
+list	nunchaku_smbc	5	5	5	0	0	0	0	3	0	1092	6013
+opt	nitpick	1	4	4	0	0	0	0	3	0	513	529
+opt	nitpick	5	4	4	0	0	0	0	3	0	556	593
+opt	nunchaku	1	4	4	0	0	0	0	3	0	55	84
+opt	nunchaku	5	4	4	0	0	0	0	3	0	45	50
+opt	nunchaku_smbc	1	4	4	0	0	0	0	3	0	72	100
+opt	nunchaku_smbc	5	4	4	0	0	0	0	3	0	43	46
+set	nitpick	1	3	2	0	1	0	0	3	0	470	486
+set	nitpick	5	3	3	0	0	0	0	3	0	493	502
+set	nunchaku	1	3	2	0	0	1	0	3	0	217	2010
+set	nunchaku	5	3	2	0	0	1	0	3	0	123	2354
+set	nunchaku_smbc	1	3	2	0	0	1	0	3	0	332	2014
+set	nunchaku_smbc	5	3	2	0	0	1	0	3	0	127	4107
+quant	nitpick	1	3	3	0	0	0	0	3	0	503	504
+quant	nitpick	5	3	3	0	0	0	0	3	0	536	606
+quant	nunchaku	1	3	1	0	0	2	0	3	0	2009	2012
+quant	nunchaku	5	3	1	0	0	2	0	3	0	4454	5198
+quant	nunchaku_smbc	1	3	1	0	0	2	0	3	0	2019	2025
+quant	nunchaku_smbc	5	3	1	0	0	2	0	3	0	6012	6014
+exwrap	nitpick	1	4	0	0	1	3	0	3	0	510	599
+exwrap	nitpick	5	4	0	0	1	3	0	3	0	558	696
+exwrap	nunchaku	1	4	0	0	0	4	0	3	0	906	1015
+exwrap	nunchaku	5	4	0	0	0	4	0	3	0	4919	5066
+exwrap	nunchaku_smbc	1	4	0	0	0	4	0	3	0	1093	2011
+exwrap	nunchaku_smbc	5	4	0	0	0	4	0	3	0	4906	6011
+ho	nitpick	1	4	4	0	0	0	0	4	0	515	596
+ho	nitpick	5	4	4	0	0	0	0	4	0	530	617
+ho	nunchaku	1	4	1	0	0	3	0	4	0	1419	2019
+ho	nunchaku	5	4	1	0	0	3	0	4	0	4741	5729
+ho	nunchaku_smbc	1	4	1	0	0	3	0	4	0	1278	2022
+ho	nunchaku_smbc	5	4	1	0	0	3	0	4	0	5332	6016
+
+== Overall (false goals: genuine-rate; true goals: spurious count) ==
+nitpick tier=1s: false 26/31 genuine (84%), +0 quasi; SPURIOUS on true: 0 []; median 513ms p90 1262ms (median genuine-hit 504ms)
+nitpick tier=5s: false 27/31 genuine (87%), +0 quasi; SPURIOUS on true: 0 []; median 544ms p90 3106ms (median genuine-hit 540ms)
+nunchaku tier=1s: false 18/31 genuine (58%), +0 quasi; SPURIOUS on true: 0 []; median 737ms p90 2019ms (median genuine-hit 50ms)
+nunchaku tier=5s: false 19/31 genuine (61%), +0 quasi; SPURIOUS on true: 0 []; median 1055ms p90 6017ms (median genuine-hit 45ms)
+nunchaku_smbc tier=1s: false 21/31 genuine (68%), +0 quasi; SPURIOUS on true: 0 []; median 413ms p90 2021ms (median genuine-hit 96ms)
+nunchaku_smbc tier=5s: false 21/31 genuine (68%), +0 quasi; SPURIOUS on true: 0 []; median 1872ms p90 6015ms (median genuine-hit 50ms)
+
+== Spurious detail (any true goal called genuine/quasi_genuine) ==

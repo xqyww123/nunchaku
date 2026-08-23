@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Resolves its own dir on purpose -- do NOT read $NUNCHAKU_HOME here
+# (the bundled cvc5 wrapper reads $CVC5_HOME and breaks when unset).
+NUN_DIR="$(cd "$(dirname "$0")" && pwd)"
+export NUNCHAKU_CVC5="$NUN_DIR/solvers/cvc5"
+exec "$NUN_DIR/nunchaku-bin" "$@"
