@@ -4,6 +4,19 @@
 
 image::https://github.com/nunchaku-inria/nunchaku/actions/workflows/main.yml/badge.svg?branch=main[Build status on GitHub]
 
+****
+*This is a maintained fork* of
+https://github.com/nunchaku-inria/nunchaku[nunchaku-inria/nunchaku], kept
+working against the Isabelle `nunchaku` command.  Patch policy is PR-first:
+every change is submitted upstream and the fork only carries what is still
+pending — see `PATCHES.md` for the current set, `VERSION` for the release
+version (`0.5.<n>`, between upstream's 0.5 and any future 0.6), and
+`regress/README.md` for the certification manual (78-goal benchmark + gate
+against a checked-in baseline).  Releases ship as the `isabelle-nunchaku`
+conda package: the CI-built musl-static binary plus a pinned static cvc5,
+registered as an Isabelle component.
+****
+
 A counter-example finder for higher-order logic, designed to be used from
 various proof assistants. A spiritual successor to Nitpick.
 Documentation at https://nunchaku-inria.github.io/nunchaku/.
