@@ -16,7 +16,7 @@ at the next sync.  Base commit: d23a876.
 - **Repro**: `nunchaku --solvers smbc --timeout 0.7 <any sat problem>`;
   before: `wrong argument '0.7'`; after: SAT in milliseconds.  Integer
   arguments behave as before.
-- **Upstream PR**: pending.
+- **Upstream PR**: https://github.com/nunchaku-inria/nunchaku/pull/56 (open).
 
 ## 2. String literals in the sexp lexer (`930d1c7`)
 
@@ -29,7 +29,7 @@ at the next sync.  Base commit: d23a876.
   `get-model-domain-elements`) on a problem with datatypes; before:
   `lexer error ... lexing failed on char "`; after: a clean
   `expected model` error.
-- **Upstream PR**: pending.
+- **Upstream PR**: https://github.com/nunchaku-inria/nunchaku/pull/57 (open).
 
 ## 3. `NUNCHAKU_CVC5` / `NUNCHAKU_SMBC`; loud unavailable-solver handling (`c63de1b`)
 
@@ -51,7 +51,7 @@ at the next sync.  Base commit: d23a876.
   literal hard-fail semantics would kill every stock invocation.  Warnings
   plus the existing all-unavailable failure keep the intent (a broken
   installation is visible) without breaking stock users.
-- **Upstream PR**: pending.
+- **Upstream PR**: https://github.com/nunchaku-inria/nunchaku/pull/58 (open).
 
 ## 4. Parseable identities for smbc model unknowns (`8719aca`)
 
@@ -76,4 +76,5 @@ at the next sync.  Base commit: d23a876.
   `goal ~ (hd_ (append_ xs_ ys_) = hd_ xs_)` over a `list_` datatype;
   before: `val ys_ := Cons_ $a__0 (?__ ?list__3).`; after:
   `val ys_ := Cons_ $a__0 ?__117.`
-- **Upstream PR**: pending.
+- **Upstream PR**: https://github.com/nunchaku-inria/nunchaku/pull/59 (open).
+
