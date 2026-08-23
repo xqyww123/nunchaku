@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - "v*"
   pull_request:
     branches:
       - main
@@ -37,6 +39,8 @@ jobs:
     name: static release binary (musl) + CLI smoke
     timeout-minutes: 45
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # for the tag-push GitHub release below
     steps:
       - uses: actions/checkout@v4
 
@@ -85,6 +89,18 @@ jobs:
           name: nunchaku-bin-x86_64-linux
           path: nunchaku-bin
           retention-days: 90
+
+      - name: Attach binary to the GitHub release (tag pushes only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # the tag must agree with the VERSION single source
+          test "refs/tags/v$(cat VERSION)" = "${{ github.ref }}" || {
+            echo "tag ${{ github.ref }} does not match VERSION $(cat VERSION)"; exit 1; }
+          cp nunchaku-bin nunchaku-bin-x86_64-linux
+          gh release create "${{ github.ref_name }}" --notes "See PATCHES.md for the patch set." || true
+          gh release upload "${{ github.ref_name }}" nunchaku-bin-x86_64-linux --clobber
 
   benchmark:
     name: benchmark
