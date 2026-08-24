@@ -1,0 +1,79 @@
+name: platform-probe
+
+# Probe branch only: measures whether nunchaku builds and runs on
+# Windows and macOS runners.  Never triggers on main.
+on:
+  push:
+    branches:
+      - ci/platform-probe
+  workflow_dispatch:
+
+jobs:
+  probe:
+    name: probe (${{ matrix.os }})
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - macos-15
+          - macos-15-intel
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          # newest compiler of the linux build matrix; on Windows this
+          # resolves to the default mingw-based port
+          ocaml-compiler: 5.4.x
+          dune-cache: true
+
+      - run: opam install . --deps-only
+
+      - run: opam exec -- dune build @install --profile=release
+
+      - name: Smoke test (no solver installed)
+        run: |
+          BIN=_build/default/src/main/nunchaku.exe
+          ls -l "$BIN"
+          file "$BIN" || true
+          "$BIN" --version
+          cat > probe.nun <<'EOF'
+          val p : prop.
+          goal ~ (p && ~ p).
+          EOF
+          set +e
+          "$BIN" probe.nun > run.out 2>&1
+          code=$?
+          set -e
+          echo "exit code: $code"
+          cat run.out
+          # parsing succeeded and the pipeline was reached: the only
+          # acceptable failure is the missing-solver one
+          grep -q "no usable solver" run.out
+
+      - name: Dynamic-library footprint
+        run: |
+          BIN=_build/default/src/main/nunchaku.exe
+          if [ "$RUNNER_OS" = macOS ]; then
+            otool -L "$BIN"
+          else
+            # any available objdump: PE imports are toolchain-independent
+            for t in x86_64-w64-mingw32-objdump objdump; do
+              if command -v "$t" >/dev/null 2>&1; then
+                "$t" -p "$BIN" | grep -i "DLL Name"
+                exit 0
+              fi
+            done
+            opam exec -- bash -c 'objdump -p "$0" | grep -i "DLL Name"' "$BIN"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nunchaku-${{ matrix.os }}
+          path: _build/default/src/main/nunchaku.exe
