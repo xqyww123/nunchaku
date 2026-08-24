@@ -1,343 +1,457 @@
-class	goal_id	truth	engine	tier	verdict	ms
-arith_lin	l1	F	nitpick	1	genuine	566
-arith_lin	l2	F	nitpick	1	genuine	485
-arith_lin	l3	F	nitpick	1	genuine	493
-arith_lin	l4	F	nitpick	1	genuine	477
-arith_lin	l5	T	nitpick	1	none	550
-arith_lin	l6	T	nitpick	1	none	510
-arith_lin	l7	T	nitpick	1	none	538
-arith_nl	n1	T	nitpick	1	unknown	1262
-arith_nl	n2	F	nitpick	1	genuine	505
-arith_nl	n3	F	nitpick	1	genuine	530
-arith_nl	n4	F	nitpick	1	genuine	474
-arith_nl	n5	T	nitpick	1	unknown	1377
-arith_nl	n6	T	nitpick	1	unknown	1211
-arith_nl	n7	F	nitpick	1	genuine	513
-arith_nl	n8	T	nitpick	1	unknown	1357
-list	ls1	F	nitpick	1	genuine	495
-list	ls2	F	nitpick	1	genuine	616
-list	ls3	F	nitpick	1	genuine	504
-list	ls4	F	nitpick	1	genuine	551
-list	ls5	T	nitpick	1	unknown	1212
-list	ls6	T	nitpick	1	unknown	1368
-list	ls7	T	nitpick	1	unknown	1383
-list	ls8	F	nitpick	1	genuine	552
-opt	o1	F	nitpick	1	genuine	513
-opt	o2	F	nitpick	1	genuine	515
-opt	o3	F	nitpick	1	genuine	513
-opt	o4	T	nitpick	1	none	1049
-opt	o5	T	nitpick	1	none	50
-opt	o6	F	nitpick	1	genuine	529
-opt	o7	T	nitpick	1	none	42
-set	s1	F	nitpick	1	genuine	486
-set	s2	F	nitpick	1	potential	1098
-set	s3	T	nitpick	1	none	474
-set	s4	T	nitpick	1	none	451
-set	s5	F	nitpick	1	genuine	467
-set	s6	T	nitpick	1	none	42
-quant	q1	F	nitpick	1	genuine	504
-quant	q2	T	nitpick	1	potential	503
-quant	q3	F	nitpick	1	genuine	501
-quant	q4	T	nitpick	1	none	504
-quant	q5	F	nitpick	1	genuine	490
-quant	q6	T	nitpick	1	unknown	1382
-exwrap	e1	F	nitpick	1	none	599
-exwrap	e2	T	nitpick	1	none	710
-exwrap	e3	F	nitpick	1	unknown	486
-exwrap	e4	T	nitpick	1	none	492
-exwrap	e5	F	nitpick	1	potential	535
-exwrap	e6	T	nitpick	1	unknown	472
-exwrap	e7	F	nitpick	1	none	510
-ho	h1	F	nitpick	1	genuine	497
-ho	h2	F	nitpick	1	genuine	543
-ho	h3	T	nitpick	1	unknown	1317
-ho	h4	T	nitpick	1	none	44
-ho	h5	F	nitpick	1	genuine	596
-ho	h6	T	nitpick	1	none	533
-ho	h7	F	nitpick	1	genuine	464
-ho	h8	T	nitpick	1	none	43
-arith_lin	l1	F	nitpick	5	genuine	551
-arith_lin	l2	F	nitpick	5	genuine	565
-arith_lin	l3	F	nitpick	5	genuine	529
-arith_lin	l4	F	nitpick	5	genuine	509
-arith_lin	l5	T	nitpick	5	none	536
-arith_lin	l6	T	nitpick	5	none	550
-arith_lin	l7	T	nitpick	5	none	519
-arith_nl	n1	T	nitpick	5	none	3106
-arith_nl	n2	F	nitpick	5	genuine	532
-arith_nl	n3	F	nitpick	5	genuine	540
-arith_nl	n4	F	nitpick	5	genuine	486
-arith_nl	n5	T	nitpick	5	unknown	5380
-arith_nl	n6	T	nitpick	5	none	2912
-arith_nl	n7	F	nitpick	5	genuine	544
-arith_nl	n8	T	nitpick	5	none	3664
-list	ls1	F	nitpick	5	genuine	540
-list	ls2	F	nitpick	5	genuine	615
-list	ls3	F	nitpick	5	genuine	538
-list	ls4	F	nitpick	5	genuine	589
-list	ls5	T	nitpick	5	none	3454
-list	ls6	T	nitpick	5	none	1706
-list	ls7	T	nitpick	5	none	4493
-list	ls8	F	nitpick	5	genuine	564
-opt	o1	F	nitpick	5	genuine	560
-opt	o2	F	nitpick	5	genuine	556
-opt	o3	F	nitpick	5	genuine	593
-opt	o4	T	nitpick	5	none	1015
-opt	o5	T	nitpick	5	none	49
-opt	o6	F	nitpick	5	genuine	513
-opt	o7	T	nitpick	5	none	45
-set	s1	F	nitpick	5	genuine	485
-set	s2	F	nitpick	5	genuine	1383
-set	s3	T	nitpick	5	none	501
-set	s4	T	nitpick	5	none	449
-set	s5	F	nitpick	5	genuine	502
-set	s6	T	nitpick	5	none	49
-quant	q1	F	nitpick	5	genuine	527
-quant	q2	T	nitpick	5	potential	606
-quant	q3	F	nitpick	5	genuine	530
-quant	q4	T	nitpick	5	none	542
-quant	q5	F	nitpick	5	genuine	525
-quant	q6	T	nitpick	5	unknown	5407
-exwrap	e1	F	nitpick	5	none	558
-exwrap	e2	T	nitpick	5	none	752
-exwrap	e3	F	nitpick	5	unknown	696
-exwrap	e4	T	nitpick	5	none	550
-exwrap	e5	F	nitpick	5	potential	625
-exwrap	e6	T	nitpick	5	unknown	489
-exwrap	e7	F	nitpick	5	none	503
-ho	h1	F	nitpick	5	genuine	527
-ho	h2	F	nitpick	5	genuine	559
-ho	h3	T	nitpick	5	unknown	5431
-ho	h4	T	nitpick	5	none	48
-ho	h5	F	nitpick	5	genuine	617
-ho	h6	T	nitpick	5	none	534
-ho	h7	F	nitpick	5	genuine	519
-ho	h8	T	nitpick	5	none	44
-arith_lin	l1	F	nunchaku	1	genuine	39
-arith_lin	l2	F	nunchaku	1	genuine	43
-arith_lin	l3	F	nunchaku	1	unknown	2539
-arith_lin	l4	F	nunchaku	1	genuine	44
-arith_lin	l5	T	nunchaku	1	unknown	2008
-arith_lin	l6	T	nunchaku	1	unknown	2019
-arith_lin	l7	T	nunchaku	1	unknown	2009
-arith_nl	n1	T	nunchaku	1	unknown	2017
-arith_nl	n2	F	nunchaku	1	unknown	2014
-arith_nl	n3	F	nunchaku	1	genuine	220
-arith_nl	n4	F	nunchaku	1	genuine	286
-arith_nl	n5	T	nunchaku	1	unknown	2011
-arith_nl	n6	T	nunchaku	1	unknown	2018
-arith_nl	n7	F	nunchaku	1	genuine	258
-arith_nl	n8	T	nunchaku	1	unknown	2009
-list	ls1	F	nunchaku	1	genuine	43
-list	ls2	F	nunchaku	1	unknown	2014
-list	ls3	F	nunchaku	1	genuine	267
-list	ls4	F	nunchaku	1	genuine	332
-list	ls5	T	nunchaku	1	unknown	2013
-list	ls6	T	nunchaku	1	unknown	2012
-list	ls7	T	nunchaku	1	unknown	2019
-list	ls8	F	nunchaku	1	genuine	36
-opt	o1	F	nunchaku	1	genuine	56
-opt	o2	F	nunchaku	1	genuine	42
-opt	o3	F	nunchaku	1	genuine	41
-opt	o4	T	nunchaku	1	none	48
-opt	o5	T	nunchaku	1	none	55
-opt	o6	F	nunchaku	1	genuine	737
-opt	o7	T	nunchaku	1	none	84
-set	s1	F	nunchaku	1	genuine	280
-set	s2	F	nunchaku	1	unknown	2055
-set	s3	T	nunchaku	1	none	155
-set	s4	T	nunchaku	1	unknown	2010
-set	s5	F	nunchaku	1	genuine	33
-set	s6	T	nunchaku	1	none	39
-quant	q1	F	nunchaku	1	unknown	2009
-quant	q2	T	nunchaku	1	unknown	2009
-quant	q3	F	nunchaku	1	unknown	2012
-quant	q4	T	nunchaku	1	none	33
-quant	q5	F	nunchaku	1	genuine	32
-quant	q6	T	nunchaku	1	unknown	2019
-exwrap	e1	F	nunchaku	1	unknown	1748
-exwrap	e2	T	nunchaku	1	none	275
-exwrap	e3	F	nunchaku	1	unknown	917
-exwrap	e4	T	nunchaku	1	none	35
-exwrap	e5	F	nunchaku	1	unknown	556
-exwrap	e6	T	nunchaku	1	unknown	906
-exwrap	e7	F	nunchaku	1	unknown	1015
-ho	h1	F	nunchaku	1	unknown	1742
-ho	h2	F	nunchaku	1	genuine	77
-ho	h3	T	nunchaku	1	unknown	2020
-ho	h4	T	nunchaku	1	none	27
-ho	h5	F	nunchaku	1	unknown	2019
-ho	h6	T	nunchaku	1	none	34
-ho	h7	F	nunchaku	1	unknown	2006
-ho	h8	T	nunchaku	1	unknown	1096
-arith_lin	l1	F	nunchaku	5	genuine	36
-arith_lin	l2	F	nunchaku	5	genuine	42
-arith_lin	l3	F	nunchaku	5	unknown	6504
-arith_lin	l4	F	nunchaku	5	genuine	45
-arith_lin	l5	T	nunchaku	5	unknown	6013
-arith_lin	l6	T	nunchaku	5	unknown	6017
-arith_lin	l7	T	nunchaku	5	unknown	6012
-arith_nl	n1	T	nunchaku	5	unknown	6018
-arith_nl	n2	F	nunchaku	5	unknown	6022
-arith_nl	n3	F	nunchaku	5	genuine	163
-arith_nl	n4	F	nunchaku	5	genuine	322
-arith_nl	n5	T	nunchaku	5	unknown	6014
-arith_nl	n6	T	nunchaku	5	unknown	6022
-arith_nl	n7	F	nunchaku	5	genuine	293
-arith_nl	n8	T	nunchaku	5	unknown	6014
-list	ls1	F	nunchaku	5	genuine	42
-list	ls2	F	nunchaku	5	genuine	1055
-list	ls3	F	nunchaku	5	genuine	325
-list	ls4	F	nunchaku	5	genuine	351
-list	ls5	T	nunchaku	5	unknown	6021
-list	ls6	T	nunchaku	5	unknown	6016
-list	ls7	T	nunchaku	5	unknown	6019
-list	ls8	F	nunchaku	5	genuine	34
-opt	o1	F	nunchaku	5	genuine	45
-opt	o2	F	nunchaku	5	genuine	42
-opt	o3	F	nunchaku	5	genuine	43
-opt	o4	T	nunchaku	5	none	40
-opt	o5	T	nunchaku	5	none	46
-opt	o6	F	nunchaku	5	genuine	50
-opt	o7	T	nunchaku	5	none	50
-set	s1	F	nunchaku	5	genuine	118
-set	s2	F	nunchaku	5	unknown	6017
-set	s3	T	nunchaku	5	none	128
-set	s4	T	nunchaku	5	none	2354
-set	s5	F	nunchaku	5	genuine	37
-set	s6	T	nunchaku	5	none	36
-quant	q1	F	nunchaku	5	unknown	5295
-quant	q2	T	nunchaku	5	unknown	5198
-quant	q3	F	nunchaku	5	unknown	4618
-quant	q4	T	nunchaku	5	none	28
-quant	q5	F	nunchaku	5	genuine	36
-quant	q6	T	nunchaku	5	unknown	4290
-exwrap	e1	F	nunchaku	5	unknown	5117
-exwrap	e2	T	nunchaku	5	none	313
-exwrap	e3	F	nunchaku	5	unknown	5066
-exwrap	e4	T	nunchaku	5	none	37
-exwrap	e5	F	nunchaku	5	unknown	4919
-exwrap	e6	T	nunchaku	5	unknown	4958
-exwrap	e7	F	nunchaku	5	unknown	4418
-ho	h1	F	nunchaku	5	unknown	4748
-ho	h2	F	nunchaku	5	genuine	75
-ho	h3	T	nunchaku	5	unknown	6016
-ho	h4	T	nunchaku	5	none	30
-ho	h5	F	nunchaku	5	unknown	5729
-ho	h6	T	nunchaku	5	none	30
-ho	h7	F	nunchaku	5	unknown	4734
-ho	h8	T	nunchaku	5	unknown	5480
-arith_lin	l1	F	nunchaku_smbc	1	genuine	37
-arith_lin	l2	F	nunchaku_smbc	1	genuine	38
-arith_lin	l3	F	nunchaku_smbc	1	genuine	1894
-arith_lin	l4	F	nunchaku_smbc	1	genuine	50
-arith_lin	l5	T	nunchaku_smbc	1	unknown	2013
-arith_lin	l6	T	nunchaku_smbc	1	unknown	2013
-arith_lin	l7	T	nunchaku_smbc	1	unknown	2009
-arith_nl	n1	T	nunchaku_smbc	1	unknown	2023
-arith_nl	n2	F	nunchaku_smbc	1	genuine	413
-arith_nl	n3	F	nunchaku_smbc	1	genuine	33
-arith_nl	n4	F	nunchaku_smbc	1	genuine	498
-arith_nl	n5	T	nunchaku_smbc	1	unknown	2010
-arith_nl	n6	T	nunchaku_smbc	1	unknown	1780
-arith_nl	n7	F	nunchaku_smbc	1	genuine	326
-arith_nl	n8	T	nunchaku_smbc	1	unknown	2010
-list	ls1	F	nunchaku_smbc	1	genuine	40
-list	ls2	F	nunchaku_smbc	1	genuine	67
-list	ls3	F	nunchaku_smbc	1	genuine	380
-list	ls4	F	nunchaku_smbc	1	genuine	394
-list	ls5	T	nunchaku_smbc	1	unknown	2015
-list	ls6	T	nunchaku_smbc	1	unknown	2011
-list	ls7	T	nunchaku_smbc	1	unknown	2012
-list	ls8	F	nunchaku_smbc	1	genuine	96
-opt	o1	F	nunchaku_smbc	1	genuine	100
-opt	o2	F	nunchaku_smbc	1	genuine	44
-opt	o3	F	nunchaku_smbc	1	genuine	50
-opt	o4	T	nunchaku_smbc	1	none	72
-opt	o5	T	nunchaku_smbc	1	none	62
-opt	o6	F	nunchaku_smbc	1	genuine	100
-opt	o7	T	nunchaku_smbc	1	none	113
-set	s1	F	nunchaku_smbc	1	genuine	287
-set	s2	F	nunchaku_smbc	1	unknown	2048
-set	s3	T	nunchaku_smbc	1	none	378
-set	s4	T	nunchaku_smbc	1	unknown	2014
-set	s5	F	nunchaku_smbc	1	genuine	74
-set	s6	T	nunchaku_smbc	1	none	49
-quant	q1	F	nunchaku_smbc	1	unknown	2018
-quant	q2	T	nunchaku_smbc	1	unknown	2034
-quant	q3	F	nunchaku_smbc	1	unknown	2021
-quant	q4	T	nunchaku_smbc	1	none	66
-quant	q5	F	nunchaku_smbc	1	genuine	56
-quant	q6	T	nunchaku_smbc	1	unknown	2025
-exwrap	e1	F	nunchaku_smbc	1	unknown	2011
-exwrap	e2	T	nunchaku_smbc	1	none	356
-exwrap	e3	F	nunchaku_smbc	1	unknown	876
-exwrap	e4	T	nunchaku_smbc	1	none	85
-exwrap	e5	F	nunchaku_smbc	1	unknown	2015
-exwrap	e6	T	nunchaku_smbc	1	unknown	1177
-exwrap	e7	F	nunchaku_smbc	1	unknown	1093
-ho	h1	F	nunchaku_smbc	1	unknown	2012
-ho	h2	F	nunchaku_smbc	1	genuine	252
-ho	h3	T	nunchaku_smbc	1	unknown	2025
-ho	h4	T	nunchaku_smbc	1	none	74
-ho	h5	F	nunchaku_smbc	1	unknown	2022
-ho	h6	T	nunchaku_smbc	1	none	57
-ho	h7	F	nunchaku_smbc	1	unknown	2012
-ho	h8	T	nunchaku_smbc	1	unknown	544
-arith_lin	l1	F	nunchaku_smbc	5	genuine	49
-arith_lin	l2	F	nunchaku_smbc	5	genuine	49
-arith_lin	l3	F	nunchaku_smbc	5	genuine	2663
-arith_lin	l4	F	nunchaku_smbc	5	genuine	52
-arith_lin	l5	T	nunchaku_smbc	5	unknown	6013
-arith_lin	l6	T	nunchaku_smbc	5	unknown	6020
-arith_lin	l7	T	nunchaku_smbc	5	unknown	6015
-arith_nl	n1	T	nunchaku_smbc	5	unknown	6022
-arith_nl	n2	F	nunchaku_smbc	5	genuine	4155
-arith_nl	n3	F	nunchaku_smbc	5	genuine	31
-arith_nl	n4	F	nunchaku_smbc	5	genuine	345
-arith_nl	n5	T	nunchaku_smbc	5	unknown	6013
-arith_nl	n6	T	nunchaku_smbc	5	unknown	6015
-arith_nl	n7	F	nunchaku_smbc	5	genuine	281
-arith_nl	n8	T	nunchaku_smbc	5	unknown	6012
-list	ls1	F	nunchaku_smbc	5	genuine	38
-list	ls2	F	nunchaku_smbc	5	genuine	1872
-list	ls3	F	nunchaku_smbc	5	genuine	302
-list	ls4	F	nunchaku_smbc	5	genuine	312
-list	ls5	T	nunchaku_smbc	5	unknown	6013
-list	ls6	T	nunchaku_smbc	5	unknown	6013
-list	ls7	T	nunchaku_smbc	5	unknown	6015
-list	ls8	F	nunchaku_smbc	5	genuine	32
-opt	o1	F	nunchaku_smbc	5	genuine	44
-opt	o2	F	nunchaku_smbc	5	genuine	35
-opt	o3	F	nunchaku_smbc	5	genuine	43
-opt	o4	T	nunchaku_smbc	5	none	43
-opt	o5	T	nunchaku_smbc	5	none	32
-opt	o6	F	nunchaku_smbc	5	genuine	50
-opt	o7	T	nunchaku_smbc	5	none	46
-set	s1	F	nunchaku_smbc	5	genuine	99
-set	s2	F	nunchaku_smbc	5	unknown	6020
-set	s3	T	nunchaku_smbc	5	none	156
-set	s4	T	nunchaku_smbc	5	none	4107
-set	s5	F	nunchaku_smbc	5	genuine	49
-set	s6	T	nunchaku_smbc	5	none	41
-quant	q1	F	nunchaku_smbc	5	unknown	6012
-quant	q2	T	nunchaku_smbc	5	unknown	6012
-quant	q3	F	nunchaku_smbc	5	unknown	6014
-quant	q4	T	nunchaku_smbc	5	none	35
-quant	q5	F	nunchaku_smbc	5	genuine	30
-quant	q6	T	nunchaku_smbc	5	unknown	6018
-exwrap	e1	F	nunchaku_smbc	5	unknown	6011
-exwrap	e2	T	nunchaku_smbc	5	none	289
-exwrap	e3	F	nunchaku_smbc	5	unknown	4945
-exwrap	e4	T	nunchaku_smbc	5	none	47
-exwrap	e5	F	nunchaku_smbc	5	unknown	6011
-exwrap	e6	T	nunchaku_smbc	5	unknown	4906
-exwrap	e7	F	nunchaku_smbc	5	unknown	4759
-ho	h1	F	nunchaku_smbc	5	unknown	6013
-ho	h2	F	nunchaku_smbc	5	genuine	65
-ho	h3	T	nunchaku_smbc	5	unknown	6016
-ho	h4	T	nunchaku_smbc	5	none	33
-ho	h5	F	nunchaku_smbc	5	unknown	6016
-ho	h6	T	nunchaku_smbc	5	none	33
-ho	h7	F	nunchaku_smbc	5	unknown	5185
-ho	h8	T	nunchaku_smbc	5	unknown	5480
+class	goal_id	truth	engine	tier	verdict	ms	model
+arith_lin	l1	F	nitpick	1	genuine	539	na
+arith_lin	l2	F	nitpick	1	genuine	545	na
+arith_lin	l3	F	nitpick	1	genuine	546	na
+arith_lin	l4	F	nitpick	1	genuine	554	na
+arith_lin	l5	T	nitpick	1	none	599	na
+arith_lin	l6	T	nitpick	1	none	586	na
+arith_lin	l7	T	nitpick	1	none	609	na
+arith_nl	n1	T	nitpick	1	unknown	1086	na
+arith_nl	n2	F	nitpick	1	genuine	580	na
+arith_nl	n3	F	nitpick	1	genuine	577	na
+arith_nl	n4	F	nitpick	1	genuine	551	na
+arith_nl	n5	T	nitpick	1	unknown	1096	na
+arith_nl	n6	T	nitpick	1	unknown	1055	na
+arith_nl	n7	F	nitpick	1	genuine	510	na
+arith_nl	n8	T	nitpick	1	unknown	1145	na
+list	ls1	F	nitpick	1	genuine	576	na
+list	ls2	F	nitpick	1	genuine	680	na
+list	ls3	F	nitpick	1	genuine	578	na
+list	ls4	F	nitpick	1	genuine	646	na
+list	ls5	T	nitpick	1	unknown	1435	na
+list	ls6	T	nitpick	1	unknown	1093	na
+list	ls7	T	nitpick	1	unknown	1126	na
+list	ls8	F	nitpick	1	genuine	617	na
+opt	o1	F	nitpick	1	genuine	615	na
+opt	o2	F	nitpick	1	genuine	577	na
+opt	o3	F	nitpick	1	genuine	584	na
+opt	o4	T	nitpick	1	unknown	1205	na
+opt	o5	T	nitpick	1	none	51	na
+opt	o6	F	nitpick	1	genuine	566	na
+opt	o7	T	nitpick	1	none	51	na
+set	s1	F	nitpick	1	genuine	544	na
+set	s2	F	nitpick	1	potential	751	na
+set	s3	T	nitpick	1	none	507	na
+set	s4	T	nitpick	1	none	530	na
+set	s5	F	nitpick	1	genuine	514	na
+set	s6	T	nitpick	1	none	50	na
+quant	q1	F	nitpick	1	genuine	520	na
+quant	q2	T	nitpick	1	potential	551	na
+quant	q3	F	nitpick	1	genuine	565	na
+quant	q4	T	nitpick	1	none	546	na
+quant	q5	F	nitpick	1	genuine	558	na
+quant	q6	T	nitpick	1	unknown	1465	na
+exwrap	e1	F	nitpick	1	none	701	na
+exwrap	e2	T	nitpick	1	none	747	na
+exwrap	e3	F	nitpick	1	unknown	523	na
+exwrap	e4	T	nitpick	1	none	527	na
+exwrap	e5	F	nitpick	1	potential	584	na
+exwrap	e6	T	nitpick	1	unknown	492	na
+exwrap	e7	F	nitpick	1	none	542	na
+ho	h1	F	nitpick	1	genuine	565	na
+ho	h2	F	nitpick	1	genuine	607	na
+ho	h3	T	nitpick	1	unknown	1407	na
+ho	h4	T	nitpick	1	none	56	na
+ho	h5	F	nitpick	1	genuine	618	na
+ho	h6	T	nitpick	1	none	600	na
+ho	h7	F	nitpick	1	genuine	495	na
+ho	h8	T	nitpick	1	none	63	na
+arith_lin	l1	F	nitpick	5	genuine	594	na
+arith_lin	l2	F	nitpick	5	genuine	577	na
+arith_lin	l3	F	nitpick	5	genuine	610	na
+arith_lin	l4	F	nitpick	5	genuine	560	na
+arith_lin	l5	T	nitpick	5	none	587	na
+arith_lin	l6	T	nitpick	5	none	585	na
+arith_lin	l7	T	nitpick	5	none	580	na
+arith_nl	n1	T	nitpick	5	none	3129	na
+arith_nl	n2	F	nitpick	5	genuine	573	na
+arith_nl	n3	F	nitpick	5	genuine	596	na
+arith_nl	n4	F	nitpick	5	genuine	549	na
+arith_nl	n5	T	nitpick	5	unknown	5427	na
+arith_nl	n6	T	nitpick	5	none	2824	na
+arith_nl	n7	F	nitpick	5	genuine	570	na
+arith_nl	n8	T	nitpick	5	none	4056	na
+list	ls1	F	nitpick	5	genuine	571	na
+list	ls2	F	nitpick	5	genuine	645	na
+list	ls3	F	nitpick	5	genuine	581	na
+list	ls4	F	nitpick	5	genuine	635	na
+list	ls5	T	nitpick	5	none	3888	na
+list	ls6	T	nitpick	5	none	1772	na
+list	ls7	T	nitpick	5	unknown	5137	na
+list	ls8	F	nitpick	5	genuine	613	na
+opt	o1	F	nitpick	5	genuine	599	na
+opt	o2	F	nitpick	5	genuine	565	na
+opt	o3	F	nitpick	5	genuine	558	na
+opt	o4	T	nitpick	5	none	1056	na
+opt	o5	T	nitpick	5	none	46	na
+opt	o6	F	nitpick	5	genuine	562	na
+opt	o7	T	nitpick	5	none	45	na
+set	s1	F	nitpick	5	genuine	529	na
+set	s2	F	nitpick	5	genuine	1356	na
+set	s3	T	nitpick	5	none	520	na
+set	s4	T	nitpick	5	none	518	na
+set	s5	F	nitpick	5	genuine	520	na
+set	s6	T	nitpick	5	none	47	na
+quant	q1	F	nitpick	5	genuine	513	na
+quant	q2	T	nitpick	5	potential	613	na
+quant	q3	F	nitpick	5	genuine	544	na
+quant	q4	T	nitpick	5	none	548	na
+quant	q5	F	nitpick	5	genuine	556	na
+quant	q6	T	nitpick	5	unknown	5423	na
+exwrap	e1	F	nitpick	5	none	596	na
+exwrap	e2	T	nitpick	5	none	742	na
+exwrap	e3	F	nitpick	5	unknown	614	na
+exwrap	e4	T	nitpick	5	none	539	na
+exwrap	e5	F	nitpick	5	potential	644	na
+exwrap	e6	T	nitpick	5	unknown	500	na
+exwrap	e7	F	nitpick	5	none	552	na
+ho	h1	F	nitpick	5	genuine	550	na
+ho	h2	F	nitpick	5	genuine	626	na
+ho	h3	T	nitpick	5	unknown	5433	na
+ho	h4	T	nitpick	5	none	47	na
+ho	h5	F	nitpick	5	genuine	673	na
+ho	h6	T	nitpick	5	none	571	na
+ho	h7	F	nitpick	5	genuine	512	na
+ho	h8	T	nitpick	5	none	44	na
+arith_lin	l1	F	nunchaku	1	genuine	37	yes
+arith_lin	l2	F	nunchaku	1	genuine	39	yes
+arith_lin	l3	F	nunchaku	1	unknown	2505	na
+arith_lin	l4	F	nunchaku	1	genuine	42	yes
+arith_lin	l5	T	nunchaku	1	unknown	2010	na
+arith_lin	l6	T	nunchaku	1	unknown	2015	na
+arith_lin	l7	T	nunchaku	1	unknown	2009	na
+arith_nl	n1	T	nunchaku	1	unknown	2015	na
+arith_nl	n2	F	nunchaku	1	unknown	2017	na
+arith_nl	n3	F	nunchaku	1	genuine	177	yes
+arith_nl	n4	F	nunchaku	1	genuine	98	no
+arith_nl	n5	T	nunchaku	1	unknown	2010	na
+arith_nl	n6	T	nunchaku	1	unknown	2020	na
+arith_nl	n7	F	nunchaku	1	genuine	132	yes
+arith_nl	n8	T	nunchaku	1	unknown	2010	na
+list	ls1	F	nunchaku	1	genuine	40	yes
+list	ls2	F	nunchaku	1	unknown	2013	na
+list	ls3	F	nunchaku	1	genuine	77	yes
+list	ls4	F	nunchaku	1	genuine	195	no
+list	ls5	T	nunchaku	1	unknown	2012	na
+list	ls6	T	nunchaku	1	unknown	2011	na
+list	ls7	T	nunchaku	1	unknown	2014	na
+list	ls8	F	nunchaku	1	genuine	47	yes
+opt	o1	F	nunchaku	1	genuine	47	yes
+opt	o2	F	nunchaku	1	genuine	49	yes
+opt	o3	F	nunchaku	1	genuine	48	yes
+opt	o4	T	nunchaku	1	none	52	na
+opt	o5	T	nunchaku	1	none	62	na
+opt	o6	F	nunchaku	1	genuine	69	yes
+opt	o7	T	nunchaku	1	none	75	na
+set	s1	F	nunchaku	1	genuine	191	no
+set	s2	F	nunchaku	1	unknown	2045	na
+set	s3	T	nunchaku	1	none	322	na
+set	s4	T	nunchaku	1	unknown	2010	na
+set	s5	F	nunchaku	1	genuine	47	no
+set	s6	T	nunchaku	1	none	48	na
+quant	q1	F	nunchaku	1	unknown	2009	na
+quant	q2	T	nunchaku	1	unknown	2010	na
+quant	q3	F	nunchaku	1	unknown	2011	na
+quant	q4	T	nunchaku	1	none	50	na
+quant	q5	F	nunchaku	1	genuine	56	yes
+quant	q6	T	nunchaku	1	unknown	2024	na
+exwrap	e1	F	nunchaku	1	unknown	2009	na
+exwrap	e2	T	nunchaku	1	none	80	na
+exwrap	e3	F	nunchaku	1	unknown	642	na
+exwrap	e4	T	nunchaku	1	none	41	na
+exwrap	e5	F	nunchaku	1	unknown	728	na
+exwrap	e6	T	nunchaku	1	unknown	625	na
+exwrap	e7	F	nunchaku	1	unknown	623	na
+ho	h1	F	nunchaku	1	unknown	1780	na
+ho	h2	F	nunchaku	1	genuine	81	no
+ho	h3	T	nunchaku	1	unknown	2015	na
+ho	h4	T	nunchaku	1	none	30	na
+ho	h5	F	nunchaku	1	unknown	2015	na
+ho	h6	T	nunchaku	1	none	37	na
+ho	h7	F	nunchaku	1	unknown	1798	na
+ho	h8	T	nunchaku	1	unknown	606	na
+arith_lin	l1	F	nunchaku	5	genuine	37	yes
+arith_lin	l2	F	nunchaku	5	genuine	37	yes
+arith_lin	l3	F	nunchaku	5	unknown	6521	na
+arith_lin	l4	F	nunchaku	5	genuine	40	yes
+arith_lin	l5	T	nunchaku	5	unknown	6013	na
+arith_lin	l6	T	nunchaku	5	unknown	6019	na
+arith_lin	l7	T	nunchaku	5	unknown	6014	na
+arith_nl	n1	T	nunchaku	5	unknown	6022	na
+arith_nl	n2	F	nunchaku	5	unknown	6020	na
+arith_nl	n3	F	nunchaku	5	genuine	176	yes
+arith_nl	n4	F	nunchaku	5	genuine	97	no
+arith_nl	n5	T	nunchaku	5	unknown	6013	na
+arith_nl	n6	T	nunchaku	5	unknown	6022	na
+arith_nl	n7	F	nunchaku	5	genuine	111	yes
+arith_nl	n8	T	nunchaku	5	unknown	6013	na
+list	ls1	F	nunchaku	5	genuine	40	yes
+list	ls2	F	nunchaku	5	genuine	1373	yes
+list	ls3	F	nunchaku	5	genuine	76	yes
+list	ls4	F	nunchaku	5	genuine	163	no
+list	ls5	T	nunchaku	5	unknown	6021	na
+list	ls6	T	nunchaku	5	unknown	6016	na
+list	ls7	T	nunchaku	5	unknown	6022	na
+list	ls8	F	nunchaku	5	genuine	39	yes
+opt	o1	F	nunchaku	5	genuine	37	yes
+opt	o2	F	nunchaku	5	genuine	35	yes
+opt	o3	F	nunchaku	5	genuine	41	yes
+opt	o4	T	nunchaku	5	none	35	na
+opt	o5	T	nunchaku	5	none	35	na
+opt	o6	F	nunchaku	5	genuine	41	yes
+opt	o7	T	nunchaku	5	none	35	na
+set	s1	F	nunchaku	5	genuine	83	no
+set	s2	F	nunchaku	5	unknown	6023	na
+set	s3	T	nunchaku	5	none	146	na
+set	s4	T	nunchaku	5	none	3815	na
+set	s5	F	nunchaku	5	genuine	37	no
+set	s6	T	nunchaku	5	none	37	na
+quant	q1	F	nunchaku	5	unknown	4598	na
+quant	q2	T	nunchaku	5	unknown	5267	na
+quant	q3	F	nunchaku	5	unknown	4904	na
+quant	q4	T	nunchaku	5	none	28	na
+quant	q5	F	nunchaku	5	genuine	32	yes
+quant	q6	T	nunchaku	5	unknown	4364	na
+exwrap	e1	F	nunchaku	5	unknown	5202	na
+exwrap	e2	T	nunchaku	5	none	53	na
+exwrap	e3	F	nunchaku	5	unknown	5315	na
+exwrap	e4	T	nunchaku	5	none	34	na
+exwrap	e5	F	nunchaku	5	unknown	5496	na
+exwrap	e6	T	nunchaku	5	unknown	5000	na
+exwrap	e7	F	nunchaku	5	unknown	4779	na
+ho	h1	F	nunchaku	5	unknown	4798	na
+ho	h2	F	nunchaku	5	genuine	65	no
+ho	h3	T	nunchaku	5	unknown	6016	na
+ho	h4	T	nunchaku	5	none	31	na
+ho	h5	F	nunchaku	5	unknown	5888	na
+ho	h6	T	nunchaku	5	none	31	na
+ho	h7	F	nunchaku	5	unknown	5472	na
+ho	h8	T	nunchaku	5	unknown	5476	na
+arith_lin	l1	F	nunchaku_ship	1	genuine	38	yes
+arith_lin	l2	F	nunchaku_ship	1	genuine	29	yes
+arith_lin	l3	F	nunchaku_ship	1	unknown	1537	na
+arith_lin	l4	F	nunchaku_ship	1	genuine	26	yes
+arith_lin	l5	T	nunchaku_ship	1	unknown	2008	na
+arith_lin	l6	T	nunchaku_ship	1	unknown	2016	na
+arith_lin	l7	T	nunchaku_ship	1	unknown	2008	na
+arith_nl	n1	T	nunchaku_ship	1	unknown	1822	na
+arith_nl	n2	F	nunchaku_ship	1	unknown	2013	na
+arith_nl	n3	F	nunchaku_ship	1	genuine	171	yes
+arith_nl	n4	F	nunchaku_ship	1	genuine	92	no
+arith_nl	n5	T	nunchaku_ship	1	unknown	2009	na
+arith_nl	n6	T	nunchaku_ship	1	unknown	2019	na
+arith_nl	n7	F	nunchaku_ship	1	genuine	32	yes
+arith_nl	n8	T	nunchaku_ship	1	unknown	2008	na
+list	ls1	F	nunchaku_ship	1	genuine	34	yes
+list	ls2	F	nunchaku_ship	1	genuine	33	yes
+list	ls3	F	nunchaku_ship	1	genuine	29	yes
+list	ls4	F	nunchaku_ship	1	genuine	39	yes
+list	ls5	T	nunchaku_ship	1	unknown	2012	na
+list	ls6	T	nunchaku_ship	1	unknown	2009	na
+list	ls7	T	nunchaku_ship	1	unknown	2015	na
+list	ls8	F	nunchaku_ship	1	genuine	31	yes
+opt	o1	F	nunchaku_ship	1	genuine	29	yes
+opt	o2	F	nunchaku_ship	1	genuine	30	yes
+opt	o3	F	nunchaku_ship	1	genuine	28	yes
+opt	o4	T	nunchaku_ship	1	none	26	na
+opt	o5	T	nunchaku_ship	1	none	27	na
+opt	o6	F	nunchaku_ship	1	genuine	27	yes
+opt	o7	T	nunchaku_ship	1	none	26	na
+set	s1	F	nunchaku_ship	1	genuine	57	no
+set	s2	F	nunchaku_ship	1	unknown	2008	na
+set	s3	T	nunchaku_ship	1	none	138	na
+set	s4	T	nunchaku_ship	1	unknown	2008	na
+set	s5	F	nunchaku_ship	1	genuine	42	no
+set	s6	T	nunchaku_ship	1	none	31	na
+quant	q1	F	nunchaku_ship	1	unknown	2007	na
+quant	q2	T	nunchaku_ship	1	unknown	2007	na
+quant	q3	F	nunchaku_ship	1	unknown	2011	na
+quant	q4	T	nunchaku_ship	1	none	34	na
+quant	q5	F	nunchaku_ship	1	genuine	25	yes
+quant	q6	T	nunchaku_ship	1	unknown	2013	na
+exwrap	e1	F	nunchaku_ship	1	unknown	2007	na
+exwrap	e2	T	nunchaku_ship	1	none	37	na
+exwrap	e3	F	nunchaku_ship	1	unknown	31	na
+exwrap	e4	T	nunchaku_ship	1	none	29	na
+exwrap	e5	F	nunchaku_ship	1	unknown	2009	na
+exwrap	e6	T	nunchaku_ship	1	unknown	35	na
+exwrap	e7	F	nunchaku_ship	1	unknown	39	na
+ho	h1	F	nunchaku_ship	1	unknown	2008	na
+ho	h2	F	nunchaku_ship	1	genuine	69	no
+ho	h3	T	nunchaku_ship	1	unknown	2014	na
+ho	h4	T	nunchaku_ship	1	none	32	na
+ho	h5	F	nunchaku_ship	1	unknown	2015	na
+ho	h6	T	nunchaku_ship	1	none	33	na
+ho	h7	F	nunchaku_ship	1	unknown	2007	na
+ho	h8	T	nunchaku_ship	1	unknown	317	na
+arith_lin	l1	F	nunchaku_ship	5	genuine	35	yes
+arith_lin	l2	F	nunchaku_ship	5	genuine	28	yes
+arith_lin	l3	F	nunchaku_ship	5	unknown	1528	na
+arith_lin	l4	F	nunchaku_ship	5	genuine	29	yes
+arith_lin	l5	T	nunchaku_ship	5	unknown	6010	na
+arith_lin	l6	T	nunchaku_ship	5	unknown	6017	na
+arith_lin	l7	T	nunchaku_ship	5	unknown	6011	na
+arith_nl	n1	T	nunchaku_ship	5	unknown	106	na
+arith_nl	n2	F	nunchaku_ship	5	unknown	47	na
+arith_nl	n3	F	nunchaku_ship	5	genuine	171	yes
+arith_nl	n4	F	nunchaku_ship	5	unknown	45	na
+arith_nl	n5	T	nunchaku_ship	5	unknown	6012	na
+arith_nl	n6	T	nunchaku_ship	5	unknown	6027	na
+arith_nl	n7	F	nunchaku_ship	5	genuine	42	yes
+arith_nl	n8	T	nunchaku_ship	5	unknown	6013	na
+list	ls1	F	nunchaku_ship	5	genuine	37	yes
+list	ls2	F	nunchaku_ship	5	genuine	894	yes
+list	ls3	F	nunchaku_ship	5	genuine	28	yes
+list	ls4	F	nunchaku_ship	5	genuine	134	no
+list	ls5	T	nunchaku_ship	5	unknown	6014	na
+list	ls6	T	nunchaku_ship	5	unknown	6015	na
+list	ls7	T	nunchaku_ship	5	unknown	6016	na
+list	ls8	F	nunchaku_ship	5	genuine	26	yes
+opt	o1	F	nunchaku_ship	5	genuine	30	yes
+opt	o2	F	nunchaku_ship	5	genuine	28	yes
+opt	o3	F	nunchaku_ship	5	genuine	29	yes
+opt	o4	T	nunchaku_ship	5	none	33	na
+opt	o5	T	nunchaku_ship	5	none	25	na
+opt	o6	F	nunchaku_ship	5	genuine	26	yes
+opt	o7	T	nunchaku_ship	5	none	26	na
+set	s1	F	nunchaku_ship	5	genuine	60	no
+set	s2	F	nunchaku_ship	5	unknown	6012	na
+set	s3	T	nunchaku_ship	5	none	174	na
+set	s4	T	nunchaku_ship	5	none	596	na
+set	s5	F	nunchaku_ship	5	genuine	38	no
+set	s6	T	nunchaku_ship	5	none	27	na
+quant	q1	F	nunchaku_ship	5	unknown	6011	na
+quant	q2	T	nunchaku_ship	5	unknown	6012	na
+quant	q3	F	nunchaku_ship	5	unknown	6013	na
+quant	q4	T	nunchaku_ship	5	none	31	na
+quant	q5	F	nunchaku_ship	5	genuine	30	yes
+quant	q6	T	nunchaku_ship	5	unknown	6019	na
+exwrap	e1	F	nunchaku_ship	5	unknown	6012	na
+exwrap	e2	T	nunchaku_ship	5	none	39	na
+exwrap	e3	F	nunchaku_ship	5	unknown	31	na
+exwrap	e4	T	nunchaku_ship	5	none	28	na
+exwrap	e5	F	nunchaku_ship	5	unknown	6012	na
+exwrap	e6	T	nunchaku_ship	5	unknown	37	na
+exwrap	e7	F	nunchaku_ship	5	unknown	38	na
+ho	h1	F	nunchaku_ship	5	unknown	6010	na
+ho	h2	F	nunchaku_ship	5	genuine	64	no
+ho	h3	T	nunchaku_ship	5	unknown	6015	na
+ho	h4	T	nunchaku_ship	5	none	27	na
+ho	h5	F	nunchaku_ship	5	unknown	5687	na
+ho	h6	T	nunchaku_ship	5	none	32	na
+ho	h7	F	nunchaku_ship	5	unknown	4159	na
+ho	h8	T	nunchaku_ship	5	unknown	372	na
+arith_lin	l1	F	nunchaku_smbc	1	genuine	35	yes
+arith_lin	l2	F	nunchaku_smbc	1	genuine	29	yes
+arith_lin	l3	F	nunchaku_smbc	1	unknown	2206	na
+arith_lin	l4	F	nunchaku_smbc	1	genuine	30	yes
+arith_lin	l5	T	nunchaku_smbc	1	unknown	2009	na
+arith_lin	l6	T	nunchaku_smbc	1	unknown	2016	na
+arith_lin	l7	T	nunchaku_smbc	1	unknown	2008	na
+arith_nl	n1	T	nunchaku_smbc	1	unknown	2020	na
+arith_nl	n2	F	nunchaku_smbc	1	unknown	50	na
+arith_nl	n3	F	nunchaku_smbc	1	genuine	29	yes
+arith_nl	n4	F	nunchaku_smbc	1	unknown	48	na
+arith_nl	n5	T	nunchaku_smbc	1	unknown	2010	na
+arith_nl	n6	T	nunchaku_smbc	1	unknown	2019	na
+arith_nl	n7	F	nunchaku_smbc	1	genuine	38	yes
+arith_nl	n8	T	nunchaku_smbc	1	unknown	2008	na
+list	ls1	F	nunchaku_smbc	1	genuine	37	yes
+list	ls2	F	nunchaku_smbc	1	genuine	36	yes
+list	ls3	F	nunchaku_smbc	1	genuine	38	yes
+list	ls4	F	nunchaku_smbc	1	genuine	238	no
+list	ls5	T	nunchaku_smbc	1	unknown	2018	na
+list	ls6	T	nunchaku_smbc	1	unknown	2011	na
+list	ls7	T	nunchaku_smbc	1	unknown	2018	na
+list	ls8	F	nunchaku_smbc	1	genuine	44	yes
+opt	o1	F	nunchaku_smbc	1	genuine	41	yes
+opt	o2	F	nunchaku_smbc	1	genuine	40	yes
+opt	o3	F	nunchaku_smbc	1	genuine	36	yes
+opt	o4	T	nunchaku_smbc	1	none	39	na
+opt	o5	T	nunchaku_smbc	1	none	41	na
+opt	o6	F	nunchaku_smbc	1	genuine	42	yes
+opt	o7	T	nunchaku_smbc	1	none	39	na
+set	s1	F	nunchaku_smbc	1	genuine	140	no
+set	s2	F	nunchaku_smbc	1	unknown	2021	na
+set	s3	T	nunchaku_smbc	1	none	157	na
+set	s4	T	nunchaku_smbc	1	unknown	2009	na
+set	s5	F	nunchaku_smbc	1	genuine	41	no
+set	s6	T	nunchaku_smbc	1	none	29	na
+quant	q1	F	nunchaku_smbc	1	unknown	2009	na
+quant	q2	T	nunchaku_smbc	1	unknown	2010	na
+quant	q3	F	nunchaku_smbc	1	unknown	2013	na
+quant	q4	T	nunchaku_smbc	1	none	34	na
+quant	q5	F	nunchaku_smbc	1	genuine	36	yes
+quant	q6	T	nunchaku_smbc	1	unknown	2017	na
+exwrap	e1	F	nunchaku_smbc	1	unknown	2010	na
+exwrap	e2	T	nunchaku_smbc	1	none	42	na
+exwrap	e3	F	nunchaku_smbc	1	unknown	532	na
+exwrap	e4	T	nunchaku_smbc	1	none	25	na
+exwrap	e5	F	nunchaku_smbc	1	unknown	2011	na
+exwrap	e6	T	nunchaku_smbc	1	unknown	987	na
+exwrap	e7	F	nunchaku_smbc	1	unknown	1097	na
+ho	h1	F	nunchaku_smbc	1	unknown	2009	na
+ho	h2	F	nunchaku_smbc	1	genuine	84	no
+ho	h3	T	nunchaku_smbc	1	unknown	1779	na
+ho	h4	T	nunchaku_smbc	1	none	31	na
+ho	h5	F	nunchaku_smbc	1	unknown	2023	na
+ho	h6	T	nunchaku_smbc	1	none	33	na
+ho	h7	F	nunchaku_smbc	1	unknown	2010	na
+ho	h8	T	nunchaku_smbc	1	unknown	536	na
+arith_lin	l1	F	nunchaku_smbc	5	genuine	33	yes
+arith_lin	l2	F	nunchaku_smbc	5	genuine	45	yes
+arith_lin	l3	F	nunchaku_smbc	5	unknown	5664	na
+arith_lin	l4	F	nunchaku_smbc	5	genuine	49	yes
+arith_lin	l5	T	nunchaku_smbc	5	unknown	6012	na
+arith_lin	l6	T	nunchaku_smbc	5	unknown	6019	na
+arith_lin	l7	T	nunchaku_smbc	5	unknown	6013	na
+arith_nl	n1	T	nunchaku_smbc	5	unknown	6023	na
+arith_nl	n2	F	nunchaku_smbc	5	unknown	4144	na
+arith_nl	n3	F	nunchaku_smbc	5	genuine	234	yes
+arith_nl	n4	F	nunchaku_smbc	5	genuine	132	no
+arith_nl	n5	T	nunchaku_smbc	5	unknown	6013	na
+arith_nl	n6	T	nunchaku_smbc	5	unknown	6024	na
+arith_nl	n7	F	nunchaku_smbc	5	genuine	36	yes
+arith_nl	n8	T	nunchaku_smbc	5	unknown	6011	na
+list	ls1	F	nunchaku_smbc	5	genuine	39	yes
+list	ls2	F	nunchaku_smbc	5	genuine	36	yes
+list	ls3	F	nunchaku_smbc	5	genuine	44	yes
+list	ls4	F	nunchaku_smbc	5	genuine	42	yes
+list	ls5	T	nunchaku_smbc	5	unknown	6015	na
+list	ls6	T	nunchaku_smbc	5	unknown	6013	na
+list	ls7	T	nunchaku_smbc	5	unknown	6016	na
+list	ls8	F	nunchaku_smbc	5	genuine	39	yes
+opt	o1	F	nunchaku_smbc	5	genuine	33	yes
+opt	o2	F	nunchaku_smbc	5	genuine	36	yes
+opt	o3	F	nunchaku_smbc	5	genuine	41	yes
+opt	o4	T	nunchaku_smbc	5	none	31	na
+opt	o5	T	nunchaku_smbc	5	none	38	na
+opt	o6	F	nunchaku_smbc	5	genuine	35	yes
+opt	o7	T	nunchaku_smbc	5	none	33	na
+set	s1	F	nunchaku_smbc	5	genuine	88	no
+set	s2	F	nunchaku_smbc	5	unknown	6019	na
+set	s3	T	nunchaku_smbc	5	none	153	na
+set	s4	T	nunchaku_smbc	5	none	4742	na
+set	s5	F	nunchaku_smbc	5	genuine	40	no
+set	s6	T	nunchaku_smbc	5	none	29	na
+quant	q1	F	nunchaku_smbc	5	unknown	6011	na
+quant	q2	T	nunchaku_smbc	5	unknown	6013	na
+quant	q3	F	nunchaku_smbc	5	unknown	6014	na
+quant	q4	T	nunchaku_smbc	5	none	37	na
+quant	q5	F	nunchaku_smbc	5	genuine	29	yes
+quant	q6	T	nunchaku_smbc	5	unknown	6019	na
+exwrap	e1	F	nunchaku_smbc	5	unknown	6011	na
+exwrap	e2	T	nunchaku_smbc	5	none	73	na
+exwrap	e3	F	nunchaku_smbc	5	unknown	5398	na
+exwrap	e4	T	nunchaku_smbc	5	none	44	na
+exwrap	e5	F	nunchaku_smbc	5	unknown	6010	na
+exwrap	e6	T	nunchaku_smbc	5	unknown	5230	na
+exwrap	e7	F	nunchaku_smbc	5	unknown	4800	na
+ho	h1	F	nunchaku_smbc	5	unknown	6014	na
+ho	h2	F	nunchaku_smbc	5	genuine	70	no
+ho	h3	T	nunchaku_smbc	5	unknown	5690	na
+ho	h4	T	nunchaku_smbc	5	none	31	na
+ho	h5	F	nunchaku_smbc	5	unknown	5876	na
+ho	h6	T	nunchaku_smbc	5	none	35	na
+ho	h7	F	nunchaku_smbc	5	unknown	4943	na
+ho	h8	T	nunchaku_smbc	5	unknown	4784	na
