@@ -37,6 +37,7 @@ jobs:
 
   release-binary:
     name: static release binary (musl) + CLI smoke
+    needs: run   # never attach a release asset from a tree whose test matrix is red
     timeout-minutes: 45
     runs-on: ubuntu-latest
     permissions:
@@ -53,15 +54,21 @@ jobs:
           # out of a cache shared with the glibc build-matrix jobs
           dune-cache: false
 
-      - run: opam install . --deps-only
+      - run: opam install -t . --deps-only
 
-      - name: Build (version substituted, static, stripped)
+      - name: Build (version from VERSION, static, tested, stripped)
         run: |
-          opam exec -- dune subst
+          # version comes from the VERSION file, not from git: dune subst
+          # depends on git describe, which sees no annotated tag in a CI
+          # checkout (lightweight tags only) and stamps a commit hash.
+          # %{version:nunchaku} reads the opam file's version field
+          # (measured: it wins over a dune-project (version) stanza).
+          sed -i "s/^version: .*/version: \"$(cat VERSION)\"/" nunchaku.opam
           # ocaml-option-static alone leaves the final link dynamic (measured:
           # a musl PIE with interpreter /lib/ld-musl-x86_64.so.1); OCAMLPARAM
           # injects -static into ocamlopt's C-linker invocation.
           opam exec -- env OCAMLPARAM="_,ccopt=-static" dune build @install --profile=release
+          opam exec -- env OCAMLPARAM="_,ccopt=-static" dune runtest --profile=release
           cp _build/default/src/main/nunchaku.exe nunchaku-bin
           strip nunchaku-bin
 
@@ -73,15 +80,15 @@ jobs:
 
       - name: CLI smoke
         run: |
-          # really static?  (glibc ldd wording: "not a dynamic executable"
-          # for plain static, "statically linked" for static-PIE)
+          set -o pipefail
+          # really static?  INTERP is an ELF program-header name -- locale-
+          # and wording-independent, unlike ldd's message
           file ./nunchaku-bin
-          ldd ./nunchaku-bin > ldd.out 2>&1 || true
-          cat ldd.out
-          grep -Eq "not a dynamic executable|statically linked" ldd.out
-          # dune subst worked? (unreleased checkouts print the literal placeholder)
+          ! readelf -l ./nunchaku-bin | grep -q INTERP
+          # the binary must self-report the release version (the single
+          # source: the VERSION file)
           ./nunchaku-bin --version
-          ./nunchaku-bin --version | grep -vq '\${version'
+          ./nunchaku-bin --version | grep -q " $(cat VERSION) "
           # the exact flag table the Isabelle frontend sends must parse, and the
           # answer must keep the SAT / {backend:...} output shape
           export NUNCHAKU_CVC5=$PWD/cvc5-Linux-x86_64-static/bin/cvc5
@@ -108,8 +115,9 @@ jobs:
           test "refs/tags/v$(cat VERSION)" = "${{ github.ref }}" || {
             echo "tag ${{ github.ref }} does not match VERSION $(cat VERSION)"; exit 1; }
           cp nunchaku-bin nunchaku-bin-x86_64-linux
+          sha256sum nunchaku-bin-x86_64-linux > nunchaku-bin-x86_64-linux.sha256
           gh release create "${{ github.ref_name }}" --notes "See PATCHES.md for the patch set." || true
-          gh release upload "${{ github.ref_name }}" nunchaku-bin-x86_64-linux --clobber
+          gh release upload "${{ github.ref_name }}" nunchaku-bin-x86_64-linux nunchaku-bin-x86_64-linux.sha256 --clobber
 
   benchmark:
     name: benchmark

@@ -2,7 +2,7 @@
 :toc: macro
 :source-highlighter: pygments
 
-image::https://github.com/nunchaku-inria/nunchaku/actions/workflows/main.yml/badge.svg?branch=main[Build status on GitHub]
+image::https://github.com/xqyww123/nunchaku/actions/workflows/main.yml/badge.svg?branch=main[Build status on GitHub]
 
 ****
 *This is a maintained fork* of
