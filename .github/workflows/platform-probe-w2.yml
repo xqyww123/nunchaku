@@ -93,30 +93,29 @@ jobs:
         run: |
           $mirror = (Get-Content "$env:ISA_HOME_W\contrib\cygwin\isabelle\cygwin_mirror" -Raw).Trim()
           New-Item -ItemType Directory -Force C:\temp\cygpkg | Out-Null
-          function Invoke-CygwinSetup([string]$site) {
-            echo "===== cygwin setup from $site ====="
+          # no pwsh function here: a function's pipeline output would be
+          # captured into its return value (that broke round 4)
+          $ok = $false
+          foreach ($site in @($mirror, 'https://mirrors.kernel.org/sourceware/cygwin/')) {
+            Write-Host "===== cygwin setup from $site ====="
             $pkgargs = @('--site', $site, '--no-verify',
                          '--local-package-dir', 'C:\temp\cygpkg',
                          '--root', "$env:ISA_HOME_W\contrib\cygwin",
                          '--packages', 'opam,gcc-core,make,m4,patch,unzip,diffutils,flexdll,bzip2,rsync',
                          '--no-shortcuts', '--no-startmenu', '--no-desktop', '--quiet-mode')
             $p = Start-Process -FilePath "$env:ISA_HOME_W\contrib\cygwin\isabelle\cygwin.exe" -ArgumentList $pkgargs -PassThru
-            if (-not $p.WaitForExit(1500000)) { $p.Kill(); Write-Error 'cygwin setup timed out'; return 99 }
-            echo "setup exit code: $($p.ExitCode)"
+            if (-not $p.WaitForExit(1500000)) { $p.Kill(); Write-Error 'cygwin setup timed out'; exit 1 }
+            Write-Host "setup exit code: $($p.ExitCode)"
             # setup is a GUI-subsystem exe: its console output is invisible,
             # the real diagnostics are in its logs
             foreach ($log in 'setup.log','setup.log.full') {
               $f = "$env:ISA_HOME_W\contrib\cygwin\var\log\$log"
-              if (Test-Path $f) { echo "===== $log (tail) ====="; Get-Content $f -Tail 80 }
+              if (Test-Path $f) { Write-Host "===== $log (tail) ====="; Get-Content $f -Tail 80 | Out-Host }
             }
-            return $p.ExitCode
+            if (($p.ExitCode -eq 0) -and (Test-Path "$env:ISA_HOME_W\contrib\cygwin\bin\opam.exe")) { $ok = $true; break }
+            Write-Host "setup from $site failed or opam still missing"
           }
-          $rc = Invoke-CygwinSetup $mirror
-          if (($rc -ne 0) -or -not (Test-Path "$env:ISA_HOME_W\contrib\cygwin\bin\opam.exe")) {
-            echo "Isabelle mirror setup failed or opam still missing; retrying against the official Cygwin mirror"
-            $rc = Invoke-CygwinSetup 'https://mirrors.kernel.org/sourceware/cygwin/'
-          }
-          if ($rc -ne 0) { Write-Error "cygwin setup exited $rc"; exit 1 }
+          if (-not $ok) { Write-Error 'cygwin package installation failed on all mirrors'; exit 1 }
           # sanity must name /usr/bin paths: the runner's Windows PATH (mingw
           # gcc, Strawberry patch, Git unzip) leaks into cygwin shells and can
           # satisfy a bare "command -v" spuriously (measured, round 3)
