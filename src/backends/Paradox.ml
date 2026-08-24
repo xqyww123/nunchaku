@@ -18,12 +18,14 @@ type model = (T.term, T.ty) Model.t
 let name = "paradox"
 let section = Utils.Section.make name
 
+(* the paradox binary: $NUNCHAKU_PARADOX (a path) overrides PATH lookup *)
+let paradox_program_ () =
+  Utils.external_program ~env_var:"NUNCHAKU_PARADOX" ~default:"paradox"
+
 let is_available () =
-  try
-    let res = Sys.command "which paradox > /dev/null 2> /dev/null" = 0 in
-    if res then Utils.debug ~section 3 "paradox is available";
-    res
-  with Sys_error _ -> false
+  let res = Utils.external_program_available (paradox_program_ ()) in
+  if res then Utils.debug ~section 3 "paradox is available";
+  res
 
 exception Error of string
 
@@ -109,8 +111,8 @@ let solve ~deadline pb =
          let paradox_timeout = int_of_float (ceil (deadline -. now)) in
          let hard_timeout = (int_of_float (timeout +. 1.5)) in
          let cmd =
-           Printf.sprintf "ulimit -t %d; paradox --time %d --model --tstp '%s'"
-             hard_timeout paradox_timeout file
+           Printf.sprintf "ulimit -t %d; %s --time %d --model --tstp '%s'"
+             hard_timeout (Filename.quote (paradox_program_ ())) paradox_timeout file
          in
          (* call paradox, get its stdout and errcode *)
          let fut =

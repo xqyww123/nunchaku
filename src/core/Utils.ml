@@ -351,7 +351,10 @@ let external_program ~env_var ~default =
 let external_program_available prog =
   let cmd =
     if String.contains prog '/'
-    then Printf.sprintf "test -x %s" (Filename.quote prog)
-    else Printf.sprintf "which %s > /dev/null 2> /dev/null" (Filename.quote prog)
+    then
+      (* -f as well as -x: a directory passes test -x *)
+      Printf.sprintf "test -f %s && test -x %s"
+        (Filename.quote prog) (Filename.quote prog)
+    else Printf.sprintf "command -v %s > /dev/null 2> /dev/null" (Filename.quote prog)
   in
   try Sys.command cmd = 0 with Sys_error _ -> false

@@ -808,13 +808,17 @@ let preprocess pb : processed_problem =
   in
   state, pb
 
+(* the cvc4 binary: $NUNCHAKU_CVC4 (a path) overrides PATH lookup *)
+let cvc4_program_ () =
+  Utils.external_program ~env_var:"NUNCHAKU_CVC4" ~default:"cvc4"
+
 (* the command line to invoke CVC4 *)
 let mk_cvc4_cmd_ timeout options =
   let timeout_hard = int_of_float (timeout +. 1.50001) in
   let timeout_ms = int_of_float (timeout *. 1000.) in
   Printf.sprintf
-    "ulimit -t %d; exec cvc4 --tlimit=%d --hard-limit %s %s"
-    timeout_hard timeout_ms basic_options options
+    "ulimit -t %d; exec %s --tlimit=%d --hard-limit %s %s"
+    timeout_hard (Filename.quote (cvc4_program_ ())) timeout_ms basic_options options
 
 let solve ?(options="") ?deadline ?(print=false) ?(print_model=false) pb =
   let now = Unix.gettimeofday() in
@@ -865,11 +869,9 @@ let solve ?(options="") ?deadline ?(print=false) ?(print_model=false) pb =
   )
 
 let is_available () =
-  try
-    let res = Sys.command "which cvc4 > /dev/null 2> /dev/null" = 0 in
-    if res then Utils.debug ~section 3 "CVC4 is available";
-    res
-  with Sys_error _ -> false
+  let res = Utils.external_program_available (cvc4_program_ ()) in
+  if res then Utils.debug ~section 3 "CVC4 is available";
+  res
 
 let options_l =
   [ ""

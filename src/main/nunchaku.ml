@@ -34,7 +34,7 @@ let outputs_ =
   ; "sexp", O_sexp
   ]
 
-(* NOTE: also modify list_solvers_ below if you modify this *)
+(* NOTE: also extend solver_table_ below if you modify this *)
 type solver =
   | S_cvc5
   | S_CVC4
@@ -42,14 +42,15 @@ type solver =
   | S_paradox
   | S_smbc
 
-let list_solvers_ () = "(available choices: cvc5 cvc4 kodkod paradox smbc)"
+(* the single table driving parsing, help text and warnings *)
+let solver_table_ =
+  [ S_cvc5, "cvc5"; S_CVC4, "cvc4"; S_kodkod, "kodkod";
+    S_paradox, "paradox"; S_smbc, "smbc" ]
 
-let string_of_solver_ = function
-  | S_cvc5 -> "cvc5"
-  | S_CVC4 -> "cvc4"
-  | S_kodkod -> "kodkod"
-  | S_paradox -> "paradox"
-  | S_smbc -> "smbc"
+let string_of_solver_ s = List.assoc s solver_table_
+
+let list_solvers_ () =
+  "(available choices: " ^ String.concat " " (List.map snd solver_table_) ^ ")"
 
 (** {2 Options} *)
 
@@ -97,8 +98,10 @@ let timeout_ = ref 30.
 let version_ = ref false
 let dump_ : [`No | `Yes | `Into of string] ref = ref `No
 let file = ref ""
-let solvers = ref [S_cvc5; S_CVC4; S_kodkod; S_paradox; S_smbc]
-let solvers_explicit_ = ref false (* did --solvers appear on the command line? *)
+(* [None] = the default (all solvers); [Some l] = an explicit --solvers *)
+let solvers : solver list option ref = ref None
+let requested_solvers_ () =
+  match !solvers with Some l -> l | None -> List.map fst solver_table_
 let j = ref 3
 let prelude_ = ref []
 
@@ -117,23 +120,25 @@ let parse_solvers_ s =
   let s = String.trim s |> CCString.lowercase_ascii in
   let l = CCString.Split.list_cpy ~by:"," s in
   List.map
-    (function
-      | "cvc5" -> S_cvc5
-      | "cvc4" -> S_CVC4
-      | "paradox" -> S_paradox
-      | "kodkod" -> S_kodkod
-      | "smbc" -> S_smbc
-      | s ->
-        failwith (Utils.err_sprintf "unknown solver `%s` %s" s (list_solvers_())))
+    (fun name ->
+       match CCList.find_map
+               (fun (sel,n) -> if n=name then Some sel else None) solver_table_
+       with
+       | Some sel -> sel
+       | None ->
+         failwith (Utils.err_sprintf "unknown solver `%s` %s" name (list_solvers_())))
     l
 
 let set_solvers_ s =
   let l = parse_solvers_ s |> CCList.uniq ~eq:(=) in
-  solvers := l;
-  solvers_explicit_ := true
+  solvers := Some l
 
 let set_dump () = dump_ := `Yes
 let set_dump_into s = dump_ := `Into s
+
+let set_timeout_ f =
+  if Float.is_finite f && f > 0. then timeout_ := f
+  else raise (Arg.Bad "--timeout expects a positive finite number")
 
 let call_with x f = Arg.Unit (fun () -> f x)
 
@@ -223,8 +228,8 @@ let options =
       ; "--solvers", Arg.String set_solvers_,
         " solvers to use (comma-separated list) " ^ list_solvers_ ()
       ; "-s", Arg.String set_solvers_, " synonym for --solvers"
-      ; "--timeout", Arg.Set_float timeout_, " set timeout (in s)"
-      ; "-t", Arg.Set_float timeout_, " alias to --timeout"
+      ; "--timeout", Arg.Float set_timeout_, " set timeout (in s)"
+      ; "-t", Arg.Float set_timeout_, " alias to --timeout"
       ; "--input", input_opt , " set input format"
       ; "-i", input_opt, " synonym for --input"
       ; "--output", output_opt, " set output format"
@@ -326,20 +331,35 @@ let get_dump_file () = match !dump_ with
         Some (Filename.chop_extension (Filename.basename f) ^ ".nunchaku")
     end
 
-(* is the solver requested and usable? A solver that was requested by an
-   explicit --solvers but is not available is reported on stderr:
-   silently dropping the arm would hide a broken installation. *)
-let solver_usable_ sel avail =
-  let requested = List.mem sel !solvers in
-  let ok = requested && avail () in
-  if requested && not ok && !solvers_explicit_ then
-    Format.eprintf "Warning: requested solver '%s' is not available@."
-      (string_of_solver_ sel);
-  ok
+let availability_of_solver_ = function
+  | S_cvc5 -> Backends.Cvc5.is_available
+  | S_CVC4 -> Backends.CVC4.is_available
+  | S_kodkod -> Backends.Kodkod.is_available
+  | S_paradox -> Backends.Paradox.is_available
+  | S_smbc -> Backends.Smbc.is_available
+
+let solver_usable_ sel =
+  List.mem sel (requested_solvers_ ()) && availability_of_solver_ sel ()
+
+(* Solvers requested by an explicit --solvers but unavailable are reported
+   (one aggregated stderr line): silently dropping arms would hide a broken
+   installation. *)
+let warn_unavailable_requested_ () =
+  match !solvers with
+  | None -> ()
+  | Some requested ->
+    let missing =
+      List.filter (fun s -> not (availability_of_solver_ s ())) requested
+      |> List.map string_of_solver_
+    in
+    if missing <> [] then
+      Format.eprintf "Warning: requested solver%s not available: %s@."
+        (if List.length missing > 1 then "s" else "")
+        (String.concat ", " missing)
 
 let make_cvc5 ~j () =
   let open Transform.Pipe in
-  if solver_usable_ S_cvc5 Backends.Cvc5.is_available
+  if solver_usable_ S_cvc5
   then
     Backends.Cvc5.pipes
       ~options:Backends.Cvc5.options_l
@@ -355,7 +375,7 @@ let make_cvc5 ~j () =
 
 let make_cvc4 ~j () =
   let open Transform.Pipe in
-  if solver_usable_ S_CVC4 Backends.CVC4.is_available
+  if solver_usable_ S_CVC4
   then
     Backends.CVC4.pipes
       ~options:Backends.CVC4.options_l
@@ -371,7 +391,7 @@ let make_cvc4 ~j () =
 
 let make_paradox () =
   let open Transform.Pipe in
-  if solver_usable_ S_paradox Backends.Paradox.is_available
+  if solver_usable_ S_paradox
   then
     Backends.Paradox.pipe
       ~print_model:(!pp_all_ || !pp_raw_model_)
@@ -382,7 +402,7 @@ let make_paradox () =
 
 let make_kodkod () =
   let open Transform.Pipe in
-  if solver_usable_ S_kodkod Backends.Kodkod.is_available
+  if solver_usable_ S_kodkod
   then
     Backends.Kodkod.pipe
       ~min_size:!kodkod_min_bound_
@@ -397,7 +417,7 @@ let make_kodkod () =
 
 let make_smbc () =
   let open Transform.Pipe in
-  if solver_usable_ S_smbc Backends.Smbc.is_available
+  if solver_usable_ S_smbc
   then
     Backends.Smbc.pipe
       ~print:!pp_all_
@@ -411,6 +431,7 @@ let make_smbc () =
 let make_model_pipeline () =
   let open Transform.Pipe in
   let open Pipes in
+  warn_unavailable_requested_ ();
   (* setup pipeline *)
   let check = !check_all_ in
   (* solvers *)
@@ -630,7 +651,7 @@ let main_model ~output statements =
     | Transform.Pipe.Fail ->
       failwith
         ("no usable solver among: "
-         ^ String.concat ", " (List.map string_of_solver_ !solvers))
+         ^ String.concat ", " (List.map string_of_solver_ (requested_solvers_ ())))
     | _ -> ()
   end;
   assert (not !pp_pipeline_);

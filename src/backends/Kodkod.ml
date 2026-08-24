@@ -15,6 +15,10 @@ let name = "kodkod"
 let section = Utils.Section.make name
 let _kodkod_section = section
 
+(* the kodkodi binary: $NUNCHAKU_KODKODI (a path) overrides PATH lookup *)
+let kodkodi_program_ () =
+  Utils.external_program ~env_var:"NUNCHAKU_KODKODI" ~default:"kodkodi"
+
 type problem = FO_rel.problem
 type res = (FO_rel.expr, FO_rel.sub_universe) Problem.Res.t
 
@@ -441,8 +445,8 @@ let solve ~deadline state pb : res * Scheduling.shortcut =
     let kodkod_timeout = int_of_float (ceil ((deadline -. now) *. 1000.)) in
     let hard_timeout = (int_of_float (timeout +. 1.5)) in
     let cmd =
-      Printf.sprintf "ulimit -t %d; kodkodi -max-msecs %d 2>&1"
-        hard_timeout kodkod_timeout
+      Printf.sprintf "ulimit -t %d; %s -max-msecs %d 2>&1"
+        hard_timeout (Filename.quote (kodkodi_program_ ())) kodkod_timeout
     in
     (* call solver, get its stdout and errcode *)
     let fut =
@@ -557,8 +561,7 @@ let call ?(print_model=false) ?(prio=10) ?(min_size=default_min_size) ?max_size
     S.Task.return (Res.Unknown [Res.U_other (i, "--dump")]) S.No_shortcut
 
 let is_available () =
-  try Sys.command "which kodkodi > /dev/null 2> /dev/null" = 0
-  with Sys_error _ -> false
+  Utils.external_program_available (kodkodi_program_ ())
 
 let pipe ?(print_model=false) ?min_size ?max_size ?size_increment ~print ~dump () =
   let encode pb = call ?min_size ?max_size ?size_increment ~print_model ~print ~dump pb, () in
