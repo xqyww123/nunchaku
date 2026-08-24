@@ -48,7 +48,10 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\isadl" | Out-Null
-          curl.exe -sSL --retry 3 -o "$env:RUNNER_TEMP\isadl\Isabelle2025-2.exe" https://isabelle.in.tum.de/dist/Isabelle2025-2.exe
+          # isabelle.in.tum.de redirects to plain-HTTP dist.isabelle.cit.tum.de:80,
+          # which the runner cannot reach (measured, round 1) -- use the HTTPS
+          # target directly.
+          curl.exe -sSL --retry 3 -o "$env:RUNNER_TEMP\isadl\Isabelle2025-2.exe" 'https://dist.isabelle.cit.tum.de/dist/Isabelle2025-2.exe?token=Isabelle'
           if ($LASTEXITCODE -ne 0) { exit 1 }
           Get-Item "$env:RUNNER_TEMP\isadl\Isabelle2025-2.exe" | Format-List Length
 
@@ -128,7 +131,9 @@ jobs:
           & $env:BASH_EXE --login "$env:WS_POSIX/.github/scripts/w2-build.sh"
           exit $LASTEXITCODE
 
-      - name: Build smbc (0.4.1 preferred)
+      # 0.4.1 (the certified version) is impossible on OCaml 4.14 -- see the
+      # evidence note at the top of w2-smbc.sh; 0.6 is the nearest that builds.
+      - name: Build smbc 0.6 (nearest buildable)
         shell: pwsh
         run: |
           & $env:BASH_EXE --login "$env:WS_POSIX/.github/scripts/w2-smbc.sh"
