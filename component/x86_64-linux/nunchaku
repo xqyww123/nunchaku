@@ -3,4 +3,8 @@
 # (the bundled cvc5 wrapper reads $CVC5_HOME and breaks when unset).
 NUN_DIR="$(cd "$(dirname "$0")" && pwd)"
 export NUNCHAKU_CVC5="$NUN_DIR/solvers/cvc5"
-exec "$NUN_DIR/nunchaku-bin" "$@"
+# --no-spurious-models: the stock Isabelle frontend classifies on the first
+# output token and never sees the "(potentially spurious)" marker; without
+# this it would present spurious countermodels as genuine (witnessed on
+# "(a::int) * a >= a" via the incomplete quotient encoding of int).
+exec "$NUN_DIR/nunchaku-bin" --no-spurious-models "$@"

@@ -98,3 +98,30 @@ at the next sync.  Base commit: d23a876.
   `nunchaku ${version:nunchaku} <sha>`; after: `nunchaku 0.6 <sha>`
   (dev checkout) / the tag version (released build, via `dune subst`).
 - **Upstream PR**: https://github.com/nunchaku-inria/nunchaku/pull/60 (open).
+
+## 6. Spurious-model soundness for incomplete copy encodings
+
+- **Motivation**: `ElimCopy` encodes an infinite-carrier copy type
+  (Isabelle's `int` arrives as a `partial_quotient` over `nat × nat`)
+  as an uninterpreted type WITHOUT the defining axiom (`ax_defined` is
+  dropped when the carrier has no small exact cardinality), leaving
+  `abstract`/`concrete` underconstrained -- a backend can pick an
+  interpretation under which the copied operations misevaluate.
+  Witnessed: smbc "refuting" the true goal `(a::int) * a >= a` with
+  `a = 0` in 115 ms (caught by the regression gate's SPURIOUS rule on
+  the first certification of the shipping configuration).  Upstream
+  set only `unsat_means_unknown` for these encodings, and the model
+  flag `potentially_spurious` had no producer anywhere in the tree.
+- **Fix**: `ElimCopy` also sets `sat_means_unknown` for both incomplete
+  copy encodings (subset and quotient); the smbc backend surfaces the
+  problem metadata on returned models (`potentially_spurious`), so the
+  binary prints `SAT: (potentially spurious)`.  New CLI flag
+  `--no-spurious-models` reports UNKNOWN instead -- for consumers that
+  classify on the first output token and never see the marker (the
+  stock Isabelle frontend does exactly that).  The shipped component's
+  wrapper passes the flag.
+- **Repro**: the captured frontend problem for `(a::int) * a >= a` with
+  `--solvers smbc`; before: `SAT: { val a_ := Abs_Integ_ (Pair_ (Suc_
+  zero_) (Suc_ zero_)). }` reported as a genuine countermodel; after:
+  `SAT: (potentially spurious)` by default, `UNKNOWN` under the flag.
+- **Upstream PR**: pending.
