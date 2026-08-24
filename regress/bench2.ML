@@ -80,16 +80,15 @@ fun one (cls, id, truth, prop_str) =
             | Exn.Exn (Timeout.TIMEOUT _) => ("guard_timeout", "na")
             | Exn.Exn exn =>
                 if Exn.is_interrupt exn then Exn.reraise exn
-                else ("error(" ^ String.translate (fn #"	" => " " | #"
-" => " " | c => str c) (General.exnMessage exn) ^ ")", "na"))) ()));
+                else ("error(" ^ String.translate (fn #"\t" => " " | #"\n" => " " | c => str c) (General.exnMessage exn) ^ ")", "na"))) ()));
     val (verdict, model, ms) =
       (case verdict_timed of
         NONE => ("parse_error", "na", 0)
       | SOME ({elapsed, ...}, (v, m)) => (v, m, Time.toMilliseconds elapsed));
   in
     writeln (cat_lines []) ;
-    writeln ("RESULT	" ^ cls ^ "	" ^ id ^ "	" ^ truth ^ "	" ^ engine ^ "	" ^ tier ^
-             "	" ^ verdict ^ "	" ^ string_of_int ms ^ "	" ^ model)
+    writeln ("RESULT\t" ^ cls ^ "\t" ^ id ^ "\t" ^ truth ^ "\t" ^ engine ^ "\t" ^ tier ^
+             "\t" ^ verdict ^ "\t" ^ string_of_int ms ^ "\t" ^ model)
   end;
 
 val _ = List.app one goals;
