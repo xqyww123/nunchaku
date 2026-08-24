@@ -1,0 +1,4 @@
+# Probe branch only: the sources are consumed by Cygwin bash/dune on a Windows
+# runner whose global git config is core.autocrlf=true -- CRLF would break the
+# shell scripts and the gold problem file.  Check everything out byte-for-byte.
+* -text

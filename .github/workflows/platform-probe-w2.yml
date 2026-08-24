@@ -1,0 +1,172 @@
+# W2 platform probe: build an x86_64-cygwin nunchaku.exe with Isabelle's own
+# OCaml toolchain (Isabelle2025-2 bundled Cygwin + opam + ocaml-base-compiler
+# 4.14.1), plus a self-built smbc, then smoke both against regress/gold.nun.
+# Measurement-only branch workflow; never merged.
+name: platform-probe-w2
+
+on:
+  push:
+    branches: [ci/platform-probe-w2]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platform-probe-w2
+  cancel-in-progress: true
+
+jobs:
+  w2:
+    name: x86_64-cygwin build via Isabelle toolchain
+    runs-on: windows-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Disk space and layout decision
+        shell: pwsh
+        run: |
+          Get-PSDrive -PSProvider FileSystem | Format-Table Name,@{n='Used(GB)';e={[math]::Round($_.Used/1GB,1)}},@{n='Free(GB)';e={[math]::Round($_.Free/1GB,1)}}
+          $cFree = (Get-PSDrive C).Free/1GB
+          $root = if ($cFree -gt 25) { 'C:\isa' } else { "$env:GITHUB_WORKSPACE\..\isa" }
+          $root = [System.IO.Path]::GetFullPath($root)
+          echo "ISA_ROOT=$root" >> $env:GITHUB_ENV
+          echo "ISA_HOME_W=$root\Isabelle2025-2" >> $env:GITHUB_ENV
+          echo "BASH_EXE=$root\Isabelle2025-2\contrib\cygwin\bin\bash.exe" >> $env:GITHUB_ENV
+          echo "chosen root: $root (C free: $([math]::Round($cFree,1)) GB)"
+
+      - name: Restore cached Isabelle installer
+        id: isaexe
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}\isadl\Isabelle2025-2.exe
+          key: isabelle2025-2-exe-v1
+
+      - name: Download Isabelle2025-2 (Windows)
+        if: steps.isaexe.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\isadl" | Out-Null
+          curl.exe -sSL --retry 3 -o "$env:RUNNER_TEMP\isadl\Isabelle2025-2.exe" https://isabelle.in.tum.de/dist/Isabelle2025-2.exe
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Get-Item "$env:RUNNER_TEMP\isadl\Isabelle2025-2.exe" | Format-List Length
+
+      - name: Save Isabelle installer to cache
+        if: always() && steps.isaexe.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}\isadl\Isabelle2025-2.exe
+          key: isabelle2025-2-exe-v1
+
+      - name: Extract Isabelle (7z)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force $env:ISA_ROOT | Out-Null
+          7z x -y "-o$env:ISA_ROOT" "$env:RUNNER_TEMP\isadl\Isabelle2025-2.exe" | Select-Object -Last 5
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Get-ChildItem $env:ISA_HOME_W | Select-Object Name | Format-Table
+
+      - name: Cygwin init (official headless -init)
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "$env:ISA_HOME_W\Isabelle2025-2.exe" -ArgumentList '-init' -PassThru
+          if (-not $p.WaitForExit(1500000)) { $p.Kill(); Write-Error 'Isabelle -init timed out after 25 min'; exit 1 }
+          if ($p.ExitCode -ne 0) { Write-Error "Isabelle -init exited $($p.ExitCode)"; exit 1 }
+          # sanity: bash, symlinks, settings evaluation
+          & $env:BASH_EXE --login -c 'uname -a; ls -l /usr/bin/awk; echo CYGWIN_OK'
+          exit $LASTEXITCODE
+
+      - name: POSIX path bookkeeping
+        shell: pwsh
+        run: |
+          $ws = (& $env:BASH_EXE --login -c "cygpath -u '$env:GITHUB_WORKSPACE'" | Select-Object -Last 1)
+          echo "WS_POSIX=$ws" >> $env:GITHUB_ENV
+          echo "workspace posix path: $ws"
+
+      - name: Install extra Cygwin packages (opam + build tools)
+        shell: pwsh
+        run: |
+          $mirror = (Get-Content "$env:ISA_HOME_W\contrib\cygwin\isabelle\cygwin_mirror" -Raw).Trim()
+          echo "mirror: $mirror"
+          New-Item -ItemType Directory -Force C:\temp\cygpkg | Out-Null
+          $pkgargs = @('--site', $mirror, '--no-verify',
+                       '--local-package-dir', 'C:\temp\cygpkg',
+                       '--root', "$env:ISA_HOME_W\contrib\cygwin",
+                       '--packages', 'opam,gcc-core,make,m4,patch,unzip,diffutils,flexdll,bzip2,rsync',
+                       '--no-shortcuts', '--no-startmenu', '--no-desktop', '--quiet-mode')
+          $p = Start-Process -FilePath "$env:ISA_HOME_W\contrib\cygwin\isabelle\cygwin.exe" -ArgumentList $pkgargs -PassThru
+          if (-not $p.WaitForExit(1500000)) { $p.Kill(); Write-Error 'cygwin setup timed out'; exit 1 }
+          echo "setup exit code: $($p.ExitCode)"
+          & $env:BASH_EXE --login -c 'command -v opam gcc make m4 patch unzip; opam --version; gcc --version | head -1'
+          exit $LASTEXITCODE
+
+      - name: Restore opam root cache
+        id: opamroot
+        uses: actions/cache/restore@v4
+        with:
+          path: ~\.opam
+          key: w2-opam-v1-${{ hashFiles('nunchaku.opam') }}
+          restore-keys: |
+            w2-opam-v1-
+
+      - name: ocaml_setup_base (opam init + OCaml 4.14.1 switch)
+        shell: pwsh
+        run: |
+          & $env:BASH_EXE --login "$env:WS_POSIX/.github/scripts/w2-ocaml-setup.sh"
+          exit $LASTEXITCODE
+
+      - name: Install nunchaku opam dependencies
+        shell: pwsh
+        run: |
+          & $env:BASH_EXE --login "$env:WS_POSIX/.github/scripts/w2-deps.sh"
+          exit $LASTEXITCODE
+
+      - name: Build nunchaku (dune, release)
+        shell: pwsh
+        run: |
+          & $env:BASH_EXE --login "$env:WS_POSIX/.github/scripts/w2-build.sh"
+          exit $LASTEXITCODE
+
+      - name: Build smbc (0.4.1 preferred)
+        shell: pwsh
+        run: |
+          & $env:BASH_EXE --login "$env:WS_POSIX/.github/scripts/w2-smbc.sh"
+          exit $LASTEXITCODE
+
+      - name: Save opam root cache
+        if: always() && steps.opamroot.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~\.opam
+          key: w2-opam-v1-${{ hashFiles('nunchaku.opam') }}
+
+      - name: Fetch pinned cvc5 (Win64 static)
+        shell: pwsh
+        run: |
+          curl.exe -sSL --retry 3 -o cvc5.zip https://github.com/cvc5/cvc5/releases/download/cvc5-1.3.4/cvc5-Win64-x86_64-static.zip
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $h = (Get-FileHash cvc5.zip -Algorithm SHA256).Hash.ToLower()
+          if ($h -ne '279fe7e95810cfb62433fcfc2932f35325a665f32d3697ff33f75e31d5c6a179') {
+            Write-Error "cvc5.zip sha256 mismatch: $h"; exit 1 }
+          Expand-Archive cvc5.zip -DestinationPath cvc5dist
+          New-Item -ItemType Directory -Force solvers | Out-Null
+          Copy-Item cvc5dist\cvc5-Win64-x86_64-static\bin\cvc5.exe solvers\cvc5.exe
+          Get-Item solvers\cvc5.exe | Format-List Length
+
+      - name: Smoke tests (gold.nun under bundled Cygwin)
+        shell: pwsh
+        run: |
+          & $env:BASH_EXE --login "$env:WS_POSIX/.github/scripts/w2-smoke.sh"
+          exit $LASTEXITCODE
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nunchaku-w2-x86_64-cygwin
+          path: |
+            artifacts/
+            smoke-*.out
+          if-no-files-found: warn
+          retention-days: 30
