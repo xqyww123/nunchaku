@@ -1,7 +1,7 @@
 (* Nitpick vs Nunchaku countermodel benchmark.
-   Env: BENCH_ENGINE = nitpick | nunchaku | nunchaku_smbc
+   Env: BENCH_ENGINE = nitpick | nunchaku | nunchaku_smbc | nunchaku_ship
         BENCH_TIER   = seconds (e.g. "1" or "5")
-   Emits lines: RESULT\tclass\tid\ttruth\tengine\ttier\tverdict\tms *)
+   Emits lines: RESULT\tclass\tid\ttruth\tengine\ttier\tverdict\tms\tmodel *)
 
 val engine = getenv "BENCH_ENGINE";
 val tier = getenv "BENCH_TIER";
@@ -85,19 +85,28 @@ fun run_nitpick t =
     val params = Nitpick_Commands.default_params thy0
       [("timeout", tier), ("verbose", "false"), ("max_potential", "1"),
        ("max_threads", "1"), ("falsify", "true")];
-  in fst (Nitpick.pick_nits_in_term state0 params Nitpick.Normal 1 1 0 [] [] [] t) end;
+  in (fst (Nitpick.pick_nits_in_term state0 params Nitpick.Normal 1 1 0 [] [] [] t), "na") end;
 
+(* model column: for the nunchaku engines, whether a refuting verdict came
+   with a displayable model ("yes"/"no"); "na" otherwise.  The smbc
+   model-hole class of defects preserves the verdict and loses only the
+   model, so the gate needs this column to see them at all. *)
 fun run_nunchaku solvers t =
   let
     val params = Nunchaku_Commands.default_params thy0
       [("timeout", tier), ("solvers", solvers)];
-  in fst (Nunchaku.run_chaku_on_prop state0 params Nunchaku.Normal 1 [] t) end;
+    val (verdict, model_opt) = Nunchaku.run_chaku_on_prop state0 params Nunchaku.Normal 1 [] t;
+    val model =
+      if verdict = Nunchaku.genuineN orelse verdict = Nunchaku.quasi_genuineN
+      then (if is_some model_opt then "yes" else "no") else "na";
+  in (verdict, model) end;
 
 val run_engine =
   (case engine of
     "nitpick" => run_nitpick
   | "nunchaku" => run_nunchaku "cvc5 kodkod"
   | "nunchaku_smbc" => run_nunchaku "cvc5 kodkod smbc"
+  | "nunchaku_ship" => run_nunchaku "cvc5 smbc"
   | _ => error ("bad BENCH_ENGINE: " ^ engine));
 
 val guard = Time.fromReal (Real.fromInt tier_s + 3.0);
@@ -111,18 +120,19 @@ fun one (cls, id, truth, prop_str) =
           SOME (Timing.timing (fn () =>
             (case Exn.capture (fn () => Timeout.apply guard run_engine t) () of
               Exn.Res v => v
-            | Exn.Exn (Timeout.TIMEOUT _) => "guard_timeout"
+            | Exn.Exn (Timeout.TIMEOUT _) => ("guard_timeout", "na")
             | Exn.Exn exn =>
                 if Exn.is_interrupt exn then Exn.reraise exn
-                else "error(" ^ String.translate (fn #"\t" => " " | #"\n" => " " | c => str c) (General.exnMessage exn) ^ ")")) ()));
-    val (verdict, ms) =
+                else ("error(" ^ String.translate (fn #"	" => " " | #"
+" => " " | c => str c) (General.exnMessage exn) ^ ")", "na"))) ()));
+    val (verdict, model, ms) =
       (case verdict_timed of
-        NONE => ("parse_error", 0)
-      | SOME ({elapsed, ...}, v) => (v, Time.toMilliseconds elapsed));
+        NONE => ("parse_error", "na", 0)
+      | SOME ({elapsed, ...}, (v, m)) => (v, m, Time.toMilliseconds elapsed));
   in
     writeln (cat_lines []) ;
-    writeln ("RESULT\t" ^ cls ^ "\t" ^ id ^ "\t" ^ truth ^ "\t" ^ engine ^ "\t" ^ tier ^
-             "\t" ^ verdict ^ "\t" ^ string_of_int ms)
+    writeln ("RESULT	" ^ cls ^ "	" ^ id ^ "	" ^ truth ^ "	" ^ engine ^ "	" ^ tier ^
+             "	" ^ verdict ^ "	" ^ string_of_int ms ^ "	" ^ model)
   end;
 
 val _ = List.app one goals;

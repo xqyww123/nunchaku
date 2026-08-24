@@ -13,22 +13,28 @@ Shipping configuration (what all of this certifies): `solvers = "cvc5 smbc"`,
 
 | file | role |
 | --- | --- |
-| `bench.ML`, `bench2.ML` | benchmark drivers (78 goals total: Main-library classes + custom-datatype/large-witness classes), driven by env vars `BENCH_ENGINE` (nitpick \| nunchaku \| nunchaku_smbc) and `BENCH_TIER` (seconds) |
-| `truthcheck.ML` | side-check that the goals labelled true are actually provable |
+| `bench.ML`, `bench2.ML` | benchmark drivers (78 goals total: Main-library classes + custom-datatype/large-witness classes), driven by env vars `BENCH_ENGINE` (nitpick \| nunchaku \| nunchaku_smbc \| nunchaku_ship) and `BENCH_TIER` (seconds) |
+| `truthcheck.ML` | side-check that the goals labelled true are actually provable (run.sh runs it; UNPROVED lines are reported, not gated) |
 | `DTBench.thy`, `DTBenchCheck.thy` | the custom datatypes for `bench2.ML`, and their sanity check |
 | `NunGold.thy` | gold smoke test; loads in seconds, asserts programmatically, prints `GOLD_OK` |
-| `aggregate.py`, `aggregate2.py` | fold `RESULT` lines from the logs into `results*.tsv` + summaries |
+| `aggregate.py` | fold `RESULT` lines from the logs into a TSV + summary (called once per part: `out_`/`out2_` prefixes) |
 | `run.sh <workdir>` | run everything against the component under test |
 | `gate.sh <workdir>` | pass/fail verdict of the fresh TSVs against `baseline/` |
 | `baseline/` | checked-in reference TSVs and summaries |
 | `bash_server_main.scala` | helper needed by both engines (below) |
 
 Data format: each benchmark line is
-`RESULT\tclass\tid\ttruth\tengine\ttier\tverdict\tms`, ending with
+`RESULT\tclass\tid\ttruth\tengine\ttier\tverdict\tms\tmodel`, ending with
 `BENCH_DONE`.  The `truth` column is the truth label (`F` = a countermodel
 is expected, `T` = the goal is a true proposition); `gate.sh` reads its
 drift rules and the spurious-verdict rule from this column and needs no
-other source of truth.
+other source of truth.  The `model` column records, for the nunchaku
+engines, whether a refuting verdict came with a displayable model
+(`yes`/`no`; `na` otherwise) -- the smbc model-hole class of defects
+preserves the verdict and loses only the model, so without this column
+the gate cannot see them.  The `nunchaku_ship` arm is the shipping
+configuration (`solvers = "cvc5 smbc"`); the other nunchaku arms keep
+kodkod for cross-checking.
 
 ## 1. Build nunchaku (~3 min)
 
@@ -66,8 +72,11 @@ puts it on the PATH itself.
 ```
 
 `NunGold.thy` raises on failure and prints `GOLD_OK` on success.  It
-asserts: verdict `genuine` on the false goal, model actually displayed,
-wall clock within cap, and a true goal not refuted.  (Alternative: load
+asserts: verdict `genuine` on the false goal with the model displayed
+(once under the shipping configuration, once under `solvers = "smbc"`
+alone — the arm the smbc model-hole fixes live on, which the shipping
+race would otherwise only exercise most of the time), wall clock within
+cap, and a true goal not refuted.  (Alternative: load
 `NunGold.thy` in any PIDE session whose `NUNCHAKU_HOME` points at the
 component under test.)  Import gotcha for all probe theories: write
 `imports "HOL.Nunchaku"` — a bare `imports Nunchaku` does not resolve.
@@ -94,22 +103,20 @@ the file as an argument as `run.sh` does.
 the real `~/.isabelle/<version>/etc/preferences` (it copies it on first
 use; a scratch user dir with default preferences can silently flip
 `ML_system_64` and trigger an implicit 32-bit build) and verifies that
-`NUNCHAKU_HOME` resolves to the component under test.  It never runs
-`isabelle build`.
+`NUNCHAKU_HOME` resolves to the component under test and that
+`NUNCHAKU_VERSION` equals the repository's `VERSION` (catching an
+unsubstituted `@NUNCHAKU_VERSION@`).  It never runs `isabelle build`.
 
 Gate rules (also in `gate.sh`'s header): spurious verdicts on
 true-labelled goals hard-fail at any tier; the 5 s tier must match the
-baseline cell-for-cell, with `none/unknown → genuine` allowed only on
-false-labelled goals; the 1 s tier is reported, not gated; timings are
-advisory (3× median ratchet).
-
-Run on a **quiet machine**.  A few Nitpick cells sit just under the 5 s
-budget (`ls7` and `d11` finish around 4.6 s), and concurrent load tips
-them from `none` into `unknown`, failing the 5 s identity check for a
-reason that has nothing to do with the build under test (measured: both
-flipped under load, both matched the baseline on a quiet re-run).  If
-only such near-budget Nitpick cells differ, re-run those arms quietly
-before drawing any conclusion.
+baseline cell-for-cell, where `none` and `unknown` count as ONE verdict
+(neither claims anything about the goal, and the distinction is exactly
+what near-budget scheduling perturbs), with `none/unknown → genuine`
+allowed only on false-labelled goals; a cell must not regress from
+model-shown to model-missing; the 1 s tier is reported, not gated;
+timings are advisory (3× median ratchet).  A quiet machine is still
+recommended -- the timing ratchet reads better -- but load can no longer
+flip the gate.
 
 If the run improved on the baseline (allowed drifts only), refresh
 `baseline/` from the new TSVs in the same commit that explains why.

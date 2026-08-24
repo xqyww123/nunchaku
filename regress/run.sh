@@ -46,7 +46,7 @@ if [ ! -f "$FAKE_ETC/preferences" ]; then
   mkdir -p "$FAKE_ETC"
   cp "$REAL_PREFS" "$FAKE_ETC/preferences"
 fi
-printf 'ISABELLE_HEAPS="%s"\nML_MAX_HEAP=50\n' "$WORK/heaps" > "$FAKE_ETC/settings"
+printf 'ISABELLE_HEAPS="%s"\n' "$WORK/heaps" > "$FAKE_ETC/settings"
 printf '%s\n' "$COMP" > "$FAKE_ETC/components"
 
 export USER_HOME="$WORK/fakehome" HOME="$WORK/fakehome"
@@ -56,6 +56,11 @@ ML64=$("$ISA" options -g ML_system_64)
 NUNHOME=$("$ISA" getenv -b NUNCHAKU_HOME)
 [ "$NUNHOME" = "$COMP/x86_64-linux" ] || {
   echo "run.sh: NUNCHAKU_HOME=$NUNHOME does not point at $COMP/x86_64-linux" >&2; exit 1; }
+NUNVER=$("$ISA" getenv -b NUNCHAKU_VERSION)
+[ "$NUNVER" = "$(cat "$REGRESS/../VERSION")" ] || {
+  echo "run.sh: NUNCHAKU_VERSION=$NUNVER does not match VERSION ($(cat "$REGRESS/../VERSION"))" >&2
+  echo "        (was @NUNCHAKU_VERSION@ substituted when the component was assembled?)" >&2
+  exit 1; }
 
 rm -f "$WORK/bash_server_addr.txt"
 "$ISA" scala "$REGRESS/bash_server_main.scala" "$WORK/bash_server_addr.txt" \
@@ -72,12 +77,16 @@ grep -q BASH_SERVER_READY "$WORK/bash_server.log" || {
 ADDR=$(sed -n 1p "$WORK/bash_server_addr.txt")
 PW=$(sed -n 2p "$WORK/bash_server_addr.txt")
 
-# run one ML file in a HOL ML_process (theory context Main), logging RESULT lines
-run_ml () { # <ml-file> <logfile>
+# run one -e expression in a HOL ML_process, logging output
+run_isa () { # <ml-expression> <logfile>
   "$ISA" ML_process -l HOL -C "$REGRESS" \
     -o bash_process_address="$ADDR" -o bash_process_password="$PW" \
-    -e 'Context.setmp_generic_context (SOME (Context.Theory (Thy_Info.get_theory "Main"))) (fn () => ML_Context.eval_file ML_Compiler.flags (Path.explode "'"$1"'")) ()' \
-    > "$2" 2>&1
+    -e "$1" > "$2" 2>&1
+}
+
+# run one ML file in a HOL ML_process (theory context Main), logging RESULT lines
+run_ml () { # <ml-file> <logfile>
+  run_isa 'Context.setmp_generic_context (SOME (Context.Theory (Thy_Info.get_theory "Main"))) (fn () => ML_Context.eval_file ML_Compiler.flags (Path.explode "'"$1"'")) ()' "$2"
 }
 
 run_arm () { # <ml-file> <prefix> <engine> <tier>
@@ -90,10 +99,7 @@ run_arm () { # <ml-file> <prefix> <engine> <tier>
 # gold smoke test first: fail fast before spending ~30 min on the arms
 echo "GOLD_START $(date +%T)"
 run_ml_gold_rc=0
-"$ISA" ML_process -l HOL -C "$REGRESS" \
-  -o bash_process_address="$ADDR" -o bash_process_password="$PW" \
-  -e 'Thy_Info.use_thy_legacy "NunGold"' \
-  > "$WORK/gold.log" 2>&1 || run_ml_gold_rc=$?
+run_isa 'Thy_Info.use_thy_legacy "NunGold"' "$WORK/gold.log" || run_ml_gold_rc=$?
 if ! grep -q GOLD_OK "$WORK/gold.log"; then
   echo "GOLD FAIL (rc=$run_ml_gold_rc), see $WORK/gold.log:" >&2
   tail -5 "$WORK/gold.log" >&2
@@ -103,13 +109,23 @@ echo "GOLD_OK $(date +%T)"
 [ "${2:-}" = gold ] && exit 0
 
 for tier in 1 5; do
-  for engine in nitpick nunchaku nunchaku_smbc; do
+  for engine in nitpick nunchaku nunchaku_smbc nunchaku_ship; do
     run_arm bench.ML  out  $engine $tier
     run_arm bench2.ML out2 $engine $tier
   done
 done
 echo "ALL_ARMS_DONE"
 
-python3 "$REGRESS/aggregate.py"  "$WORK" > "$WORK/summary.txt"
-python3 "$REGRESS/aggregate2.py" "$WORK" > "$WORK/summary_datatypes.txt"
+# side-checks (report-only for UNPROVED): the truth labels the gate's
+# hardest rule rests on, and the DTBench sanity theory
+echo "TRUTHCHECK_START $(date +%T)"
+run_ml "$REGRESS/truthcheck.ML" "$WORK/truthcheck.log" || true
+echo "TRUTHCHECK unproved=$(grep -c 'UNPROVED' "$WORK/truthcheck.log" || true) (report only, see truthcheck.log)"
+run_isa 'Thy_Info.use_thy_legacy "DTBenchCheck"; writeln "DTBENCHCHECK_OK"' "$WORK/out_dtbenchcheck.log" || true
+grep -q DTBENCHCHECK_OK "$WORK/out_dtbenchcheck.log" || {
+  echo "run.sh: DTBenchCheck failed to load, see $WORK/out_dtbenchcheck.log" >&2; exit 1; }
+echo "DTBENCHCHECK_OK"
+
+python3 "$REGRESS/aggregate.py" "$WORK" out_  results.tsv           > "$WORK/summary.txt"
+python3 "$REGRESS/aggregate.py" "$WORK" out2_ results_datatypes.tsv > "$WORK/summary_datatypes.txt"
 echo "results: $WORK/results.tsv $WORK/results_datatypes.tsv"
