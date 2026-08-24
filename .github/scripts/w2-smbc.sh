@@ -28,7 +28,7 @@ SECONDS=0
 # containers 2.x was archived out of the live opam repository ("no version
 # 2.8.1", measured, round 7), so pin it straight from the upstream tarball.
 "$ISA" env bash -c 'isabelle_opam pin add -y containers.2.8.1 \
-  https://github.com/c-cube/ocaml-containers/archive/refs/tags/2.8.1.tar.gz'
+  https://github.com/c-cube/ocaml-containers/archive/refs/tags/v2.8.1.tar.gz'
 "$ISA" env bash -c \
   'isabelle_opam install -y msat.0.8.3 tip-parser.0.6 "iter>=1.0" base-bytes'
 echo "PHASE smbc-deps OK in ${SECONDS}s"
