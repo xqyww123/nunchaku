@@ -127,7 +127,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ~\.opam
-          key: w2-opam-v3-${{ hashFiles('nunchaku.opam') }}
+          key: w2-opam-v4-${{ hashFiles('nunchaku.opam') }}
           restore-keys: |
             w2-opam-
 
@@ -162,7 +162,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: ~\.opam
-          key: w2-opam-v3-${{ hashFiles('nunchaku.opam') }}
+          key: w2-opam-v4-${{ hashFiles('nunchaku.opam') }}
 
       - name: Fetch pinned cvc5 (Win64 static)
         shell: pwsh

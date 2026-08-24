@@ -33,14 +33,18 @@ SECONDS=0
   'isabelle_opam install -y msat.0.8.3 tip-parser.0.6 "iter>=1.0" base-bytes'
 echo "PHASE smbc-deps OK in ${SECONDS}s"
 
-mkdir -p smbc-src && cd smbc-src
+# build OUTSIDE the nunchaku checkout: dune walks up to the enclosing
+# workspace root, so a source tree under $WS lands its artifacts in the
+# nunchaku _build instead of its own (measured, round 9)
+BUILDDIR="$HOME/smbc-build"
+mkdir -p "$BUILDDIR" && cd "$BUILDDIR"
 curl -sSL --retry 3 -o smbc.tgz "$SMBC_URL"
 echo "$SMBC_SHA256  smbc.tgz" | sha256sum -c
 tar xzf smbc.tgz
 cd "smbc-$SMBC_VERSION"
 
 SECONDS=0
-"$ISA" env bash -c 'cd "'"$WS"'/smbc-src/smbc-'"$SMBC_VERSION"'" && \
+"$ISA" env bash -c 'cd "'"$BUILDDIR"'/smbc-'"$SMBC_VERSION"'" && \
   isabelle_opam config exec --switch "$ISABELLE_OCAML_VERSION" -- dune build @install --profile=release'
 echo "PHASE smbc-build OK in ${SECONDS}s"
 echo "SMBC-BUILT: $SMBC_VERSION"
