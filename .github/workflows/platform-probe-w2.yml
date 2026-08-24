@@ -70,13 +70,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit 1 }
           Get-ChildItem $env:ISA_HOME_W | Select-Object Name | Format-Table
 
-      - name: Cygwin init (official headless -init)
+      - name: Cygwin init (symlinks + rebaseall + postinstall)
         shell: pwsh
         run: |
-          $p = Start-Process -FilePath "$env:ISA_HOME_W\Isabelle2025-2.exe" -ArgumentList '-init' -PassThru
-          if (-not $p.WaitForExit(1500000)) { $p.Kill(); Write-Error 'Isabelle -init timed out after 25 min'; exit 1 }
-          if ($p.ExitCode -ne 0) { Write-Error "Isabelle -init exited $($p.ExitCode)"; exit 1 }
-          # sanity: bash, symlinks, settings evaluation
+          # replica of Environment.cygwin_init; the official "-init" launcher
+          # detaches (launch4j GUI wrapper, exit 259) so it cannot be awaited.
+          python "$env:GITHUB_WORKSPACE\.github\scripts\w2-cygwin-init.py"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          # sanity: bash, symlinks, basic tools
           & $env:BASH_EXE --login -c 'uname -a; ls -l /usr/bin/awk; echo CYGWIN_OK'
           exit $LASTEXITCODE
 
