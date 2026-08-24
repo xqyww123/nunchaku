@@ -76,6 +76,14 @@ at the next sync.  Base commit: d23a876.
   `goal ~ (hd_ (append_ xs_ ys_) = hd_ xs_)` over a `list_` datatype;
   before: `val ys_ := Cons_ $a__0 (?__ ?list__3).`; after:
   `val ys_ := Cons_ $a__0 ?__117.`
+- **Follow-up (adversarial review round)**: the expected-type recovery was
+  completed after review found reachable gaps -- head-position unknowns
+  (any goal with a free function variable; the HO_app case now carries
+  expectations through smbc's `(fun x. ...) arg` redexes), domain elements
+  registered into the typing env by a pre-scan, symmetric Eq/Distinct,
+  match scrutinees recovered from branch constructors, and repeated
+  unknowns sharing one `?__<n>` (the erase-table lookup preceded the `?`
+  test, a pre-existing upstream defect).
 - **Upstream PR**: https://github.com/nunchaku-inria/nunchaku/pull/59 (open).
 
 
