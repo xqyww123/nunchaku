@@ -124,4 +124,4 @@ at the next sync.  Base commit: d23a876.
   `--solvers smbc`; before: `SAT: { val a_ := Abs_Integ_ (Pair_ (Suc_
   zero_) (Suc_ zero_)). }` reported as a genuine countermodel; after:
   `SAT: (potentially spurious)` by default, `UNKNOWN` under the flag.
-- **Upstream PR**: pending.
+- **Upstream PR**: https://github.com/nunchaku-inria/nunchaku/pull/61 (open).
