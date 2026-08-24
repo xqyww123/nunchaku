@@ -92,17 +92,35 @@ jobs:
         shell: pwsh
         run: |
           $mirror = (Get-Content "$env:ISA_HOME_W\contrib\cygwin\isabelle\cygwin_mirror" -Raw).Trim()
-          echo "mirror: $mirror"
           New-Item -ItemType Directory -Force C:\temp\cygpkg | Out-Null
-          $pkgargs = @('--site', $mirror, '--no-verify',
-                       '--local-package-dir', 'C:\temp\cygpkg',
-                       '--root', "$env:ISA_HOME_W\contrib\cygwin",
-                       '--packages', 'opam,gcc-core,make,m4,patch,unzip,diffutils,flexdll,bzip2,rsync',
-                       '--no-shortcuts', '--no-startmenu', '--no-desktop', '--quiet-mode')
-          $p = Start-Process -FilePath "$env:ISA_HOME_W\contrib\cygwin\isabelle\cygwin.exe" -ArgumentList $pkgargs -PassThru
-          if (-not $p.WaitForExit(1500000)) { $p.Kill(); Write-Error 'cygwin setup timed out'; exit 1 }
-          echo "setup exit code: $($p.ExitCode)"
-          & $env:BASH_EXE --login -c 'command -v opam gcc make m4 patch unzip; opam --version; gcc --version | head -1'
+          function Invoke-CygwinSetup([string]$site) {
+            echo "===== cygwin setup from $site ====="
+            $pkgargs = @('--site', $site, '--no-verify',
+                         '--local-package-dir', 'C:\temp\cygpkg',
+                         '--root', "$env:ISA_HOME_W\contrib\cygwin",
+                         '--packages', 'opam,gcc-core,make,m4,patch,unzip,diffutils,flexdll,bzip2,rsync',
+                         '--no-shortcuts', '--no-startmenu', '--no-desktop', '--quiet-mode')
+            $p = Start-Process -FilePath "$env:ISA_HOME_W\contrib\cygwin\isabelle\cygwin.exe" -ArgumentList $pkgargs -PassThru
+            if (-not $p.WaitForExit(1500000)) { $p.Kill(); Write-Error 'cygwin setup timed out'; return 99 }
+            echo "setup exit code: $($p.ExitCode)"
+            # setup is a GUI-subsystem exe: its console output is invisible,
+            # the real diagnostics are in its logs
+            foreach ($log in 'setup.log','setup.log.full') {
+              $f = "$env:ISA_HOME_W\contrib\cygwin\var\log\$log"
+              if (Test-Path $f) { echo "===== $log (tail) ====="; Get-Content $f -Tail 80 }
+            }
+            return $p.ExitCode
+          }
+          $rc = Invoke-CygwinSetup $mirror
+          if (($rc -ne 0) -or -not (Test-Path "$env:ISA_HOME_W\contrib\cygwin\bin\opam.exe")) {
+            echo "Isabelle mirror setup failed or opam still missing; retrying against the official Cygwin mirror"
+            $rc = Invoke-CygwinSetup 'https://mirrors.kernel.org/sourceware/cygwin/'
+          }
+          if ($rc -ne 0) { Write-Error "cygwin setup exited $rc"; exit 1 }
+          # sanity must name /usr/bin paths: the runner's Windows PATH (mingw
+          # gcc, Strawberry patch, Git unzip) leaks into cygwin shells and can
+          # satisfy a bare "command -v" spuriously (measured, round 3)
+          & $env:BASH_EXE --login -c 'set -e; for t in opam gcc make m4 patch unzip; do test -x /usr/bin/$t || { echo "MISSING /usr/bin/$t"; exit 1; }; done; /usr/bin/opam --version; /usr/bin/gcc --version | head -1'
           exit $LASTEXITCODE
 
       - name: Restore opam root cache
