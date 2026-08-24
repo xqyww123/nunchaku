@@ -34,15 +34,20 @@ jobs:
             cvc5_sha256: 5a7976affaf37dcf03ee44c3d0297c8e0ba08afd44ac832dab97400da726b852
     runs-on: ${{ matrix.runner }}
     env:
-      # constants shared by all steps of one matrix leg
-      NUNCHAKU_COMPONENT: ${{ runner.temp }}/nunchaku-component
+      # constants shared by all steps of one matrix leg (the runner context
+      # is unavailable in job-level env, so temp-dir paths are set by the
+      # "Init paths" step below)
       NUNCHAKU_PLATFORM: ${{ matrix.platform_dir }}
       # official mac bundle ships 32-bit-compact heaps => ML_system_64=false
       BENCH_ML64: "false"
-      WORK: ${{ runner.temp }}/benchwork
       ISA_TAR: Isabelle2025-2_macos.tar.gz
     steps:
       - uses: actions/checkout@v4
+
+      - name: Init paths
+        run: |
+          echo "WORK=$RUNNER_TEMP/benchwork" >> "$GITHUB_ENV"
+          echo "NUNCHAKU_COMPONENT=$RUNNER_TEMP/nunchaku-component" >> "$GITHUB_ENV"
 
       - name: Runner facts
         run: |
