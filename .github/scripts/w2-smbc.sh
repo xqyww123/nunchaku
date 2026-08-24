@@ -25,8 +25,12 @@ SMBC_SHA256=e43a295dcfdfa5d45209dda8d469086594ad3a497277602f924128b7f7074d62
 SECONDS=0
 # nunchaku (already built and staged) needed containers 3.x; smbc 0.6 needs
 # the containers 2.x API, so this downgrades the switch's containers now.
+# containers 2.x was archived out of the live opam repository ("no version
+# 2.8.1", measured, round 7), so pin it straight from the upstream tarball.
+"$ISA" env bash -c 'isabelle_opam pin add -y containers.2.8.1 \
+  https://github.com/c-cube/ocaml-containers/archive/refs/tags/2.8.1.tar.gz'
 "$ISA" env bash -c \
-  'isabelle_opam install -y containers.2.8.1 msat.0.8.3 tip-parser.0.6 "iter>=1.0" base-bytes'
+  'isabelle_opam install -y msat.0.8.3 tip-parser.0.6 "iter>=1.0" base-bytes'
 echo "PHASE smbc-deps OK in ${SECONDS}s"
 
 mkdir -p smbc-src && cd smbc-src
