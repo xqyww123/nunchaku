@@ -1,0 +1,229 @@
+name: platform-probe-macbench
+
+# Measurement probe: run the regress/ benchmark end-to-end on macOS runners
+# (arm64 + Intel) against the official Isabelle2025-2 macOS bundle.  This is
+# NOT the binding certification run; gate failures are findings to report,
+# and the job therefore does not fail on a gate FAIL (only on infrastructure
+# breakage).  Not a release workflow, not for merge.
+#
+# Hard rule inherited from the harness: NEVER "isabelle build" -- the probe
+# only uses heaps the official bundle ships prebuilt, and aborts otherwise.
+on:
+  push:
+    branches:
+      - ci/platform-probe-macbench
+  workflow_dispatch:
+
+jobs:
+  macbench:
+    name: macbench ${{ matrix.arch }}
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+            platform_dir: arm64-darwin
+            cvc5_asset: cvc5-macOS-arm64-static
+            cvc5_sha256: 3840aa53f6ee6fc357415dcfe291d7f5ffec6cfb1ccca6fef64120a0d2be4cb6
+          - runner: macos-15-intel
+            arch: x86_64
+            platform_dir: x86_64-darwin
+            cvc5_asset: cvc5-macOS-x86_64-static
+            cvc5_sha256: 5a7976affaf37dcf03ee44c3d0297c8e0ba08afd44ac832dab97400da726b852
+    runs-on: ${{ matrix.runner }}
+    env:
+      # constants shared by all steps of one matrix leg
+      NUNCHAKU_COMPONENT: ${{ runner.temp }}/nunchaku-component
+      NUNCHAKU_PLATFORM: ${{ matrix.platform_dir }}
+      # official mac bundle ships 32-bit-compact heaps => ML_system_64=false
+      BENCH_ML64: "false"
+      WORK: ${{ runner.temp }}/benchwork
+      ISA_TAR: Isabelle2025-2_macos.tar.gz
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Runner facts
+        run: |
+          uname -a
+          sw_vers
+          sysctl -n machdep.cpu.brand_string || true
+          echo "ncpu=$(sysctl -n hw.ncpu)  mem=$(sysctl -n hw.memsize)"
+          bash --version | head -1
+          python3 --version
+
+      - name: Cache Isabelle distribution tarball
+        id: cache-isabelle
+        uses: actions/cache@v4
+        with:
+          path: ~/isabelle-dist/Isabelle2025-2_macos.tar.gz
+          key: isabelle2025-2-macos-tar-v1
+
+      - name: Download Isabelle (cache miss only)
+        if: steps.cache-isabelle.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/isabelle-dist
+          t0=$SECONDS
+          curl -fSL -o ~/isabelle-dist/"$ISA_TAR" \
+            "https://isabelle.in.tum.de/dist/$ISA_TAR"
+          echo "PROBE-TIMING isabelle-download $((SECONDS - t0))s"
+          ls -lh ~/isabelle-dist
+
+      - name: Extract Isabelle
+        run: |
+          t0=$SECONDS
+          mkdir -p "$HOME/isatest"
+          tar -xzf ~/isabelle-dist/"$ISA_TAR" -C "$HOME/isatest"
+          echo "PROBE-TIMING isabelle-extract $((SECONDS - t0))s"
+          ls "$HOME/isatest"
+          ISABELLE=$(find "$HOME/isatest" -maxdepth 3 -name isabelle -path '*/bin/*' | head -1)
+          [ -n "$ISABELLE" ] || { echo "no bin/isabelle found in the bundle:"; find "$HOME/isatest" -maxdepth 2; exit 1; }
+          ISA_APP=$(dirname "$(dirname "$ISABELLE")")
+          echo "ISABELLE=$ISABELLE" >> "$GITHUB_ENV"
+          echo "ISA_APP=$ISA_APP" >> "$GITHUB_ENV"
+          echo "isabelle executable: $ISABELLE"
+
+      - name: Isabelle facts + HOL heap check (no build, ever)
+        run: |
+          "$ISABELLE" version
+          for v in ISABELLE_IDENTIFIER ISABELLE_PLATFORM64 ISABELLE_APPLE_PLATFORM64 ML_SYSTEM; do
+            echo "$v=$("$ISABELLE" getenv -b "$v" || true)"
+          done
+          echo "=== available process tools (record: run.sh needs ML_process) ==="
+          "$ISABELLE" 2>&1 | grep -iE "ml_process|^  process|console" || true
+          echo "=== bundled heaps ==="
+          ls -l "$ISA_APP/heaps" 2>/dev/null || echo "NO heaps dir in the bundle"
+          ISA_ID=$("$ISABELLE" getenv -b ISABELLE_IDENTIFIER)
+          mkdir -p "$HOME/.isabelle/$ISA_ID/etc"
+          touch "$HOME/.isabelle/$ISA_ID/etc/preferences"
+          t0=$SECONDS
+          if "$ISABELLE" ML_process -l HOL -e 'writeln "HEAP_OK"' 2>&1 | tee heapcheck.log | grep -q HEAP_OK; then
+            echo "HOL heap loads with default preferences"
+          elif [ "${{ matrix.arch }}" = "arm64" ]; then
+            cat heapcheck.log
+            echo "arm64 heap load failed; retrying with ML_system_apple=false (x86_64 heaps via Rosetta)"
+            echo 'ML_system_apple = false' >> "$HOME/.isabelle/$ISA_ID/etc/preferences"
+            "$ISABELLE" ML_process -l HOL -e 'writeln "HEAP_OK"' 2>&1 | tee heapcheck2.log | grep -q HEAP_OK || {
+              cat heapcheck2.log
+              echo "BLOCKER: official bundle has no loadable HOL heap; this probe never builds"; exit 1; }
+          else
+            cat heapcheck.log
+            echo "BLOCKER: official bundle has no loadable HOL heap; this probe never builds"; exit 1
+          fi
+          echo "PROBE-TIMING hol-heap-check $((SECONDS - t0))s"
+
+      - name: Fetch prebuilt nunchaku + smbc (probe-mac artifacts, built from main @ a33dd0d)
+        uses: actions/download-artifact@v4
+        with:
+          name: nunchaku-smbc-macos-${{ matrix.arch }}
+          path: prebuilt
+          run-id: 32721158572
+          repository: xqyww123/nunchaku
+          github-token: ${{ github.token }}
+
+      - name: Fetch cvc5 (pinned release)
+        run: |
+          t0=$SECONDS
+          curl -sSL -o cvc5.zip "https://github.com/cvc5/cvc5/releases/download/cvc5-1.3.4/${{ matrix.cvc5_asset }}.zip"
+          echo "${{ matrix.cvc5_sha256 }}  cvc5.zip" | shasum -a 256 -c
+          unzip -q cvc5.zip
+          "./${{ matrix.cvc5_asset }}/bin/cvc5" --version | head -1
+          echo "PROBE-TIMING cvc5-fetch $((SECONDS - t0))s"
+
+      - name: Assemble + register component, open the version gate
+        run: |
+          t0=$SECONDS
+          COMP="$NUNCHAKU_COMPONENT"
+          PLAT="$NUNCHAKU_PLATFORM"
+          mkdir -p "$COMP/etc" "$COMP/$PLAT/solvers"
+          install -m 755 prebuilt/nunchaku-bin "$COMP/$PLAT/nunchaku-bin"
+          install -m 755 prebuilt/smbc-bin     "$COMP/$PLAT/solvers/smbc"
+          install -m 755 "${{ matrix.cvc5_asset }}/bin/cvc5" "$COMP/$PLAT/solvers/cvc5"
+          # mirrors component/etc/settings with @NUNCHAKU_VERSION@ substituted
+          # from the repository VERSION file, platform dir per arch
+          printf 'NUNCHAKU_HOME="$COMPONENT/%s"\nNUNCHAKU_VERSION="%s"\n' \
+            "$PLAT" "$(cat VERSION)" > "$COMP/etc/settings"
+          # mirrors component/x86_64-linux/nunchaku; the mac Isabelle bundle
+          # carries no smbc component, so the wrapper also pins NUNCHAKU_SMBC
+          # to the bundled smbc
+          cat > "$COMP/$PLAT/nunchaku" <<'WRAP'
+          #!/usr/bin/env bash
+          # Resolves its own dir on purpose -- do NOT read $NUNCHAKU_HOME here
+          # (the bundled cvc5 wrapper reads $CVC5_HOME and breaks when unset).
+          NUN_DIR="$(cd "$(dirname "$0")" && pwd)"
+          export NUNCHAKU_CVC5="$NUN_DIR/solvers/cvc5"
+          export NUNCHAKU_SMBC="$NUN_DIR/solvers/smbc"
+          # --no-spurious-models: the stock Isabelle frontend classifies on the
+          # first output token and never sees the "(potentially spurious)" marker.
+          exec "$NUN_DIR/nunchaku-bin" --no-spurious-models "$@"
+          WRAP
+          chmod 755 "$COMP/$PLAT/nunchaku"
+          find "$COMP" -type f | sort
+
+          echo "=== component CLI smoke (outside Isabelle) ==="
+          "$COMP/$PLAT/nunchaku" --version
+          "$COMP/$PLAT/nunchaku" --skolems-in-model --no-color --no-specialize \
+            --solvers cvc5,smbc --timeout 30 regress/gold.nun | tee smoke.out
+          grep -q '^SAT' smoke.out
+          grep -q '{backend:' smoke.out
+
+          echo "=== register with Isabelle + version gate ==="
+          "$ISABELLE" components -u "$COMP"
+          NV=$("$ISABELLE" getenv -b NUNCHAKU_VERSION)
+          echo "NUNCHAKU_VERSION=$NV (repo VERSION=$(cat VERSION))"
+          [ "$NV" = "$(cat VERSION)" ] || { echo "version gate CLOSED"; exit 1; }
+          NH=$("$ISABELLE" getenv -b NUNCHAKU_HOME)
+          echo "NUNCHAKU_HOME=$NH"
+          [ "$NH" = "$COMP/$PLAT" ] || { echo "NUNCHAKU_HOME gate CLOSED"; exit 1; }
+          echo "PROBE-TIMING component-setup $((SECONDS - t0))s"
+
+      - name: Gold smoke (run.sh gold)
+        run: |
+          t0=$SECONDS
+          ./regress/run.sh "$WORK" gold 2>&1 | tee "$RUNNER_TEMP/gold_run.log"
+          rc=${PIPESTATUS[0]}
+          echo "PROBE-TIMING gold-total $((SECONDS - t0))s"
+          exit "$rc"
+
+      - name: Full benchmark (run.sh)
+        run: |
+          t0=$SECONDS
+          ./regress/run.sh "$WORK" 2>&1 | tee "$RUNNER_TEMP/bench_run.log"
+          rc=${PIPESTATUS[0]}
+          echo "PROBE-TIMING bench-total $((SECONDS - t0))s"
+          exit "$rc"
+
+      - name: Gate vs linux baseline (probe -- findings, not certification)
+        run: |
+          set +e
+          ./regress/gate.sh "$WORK" 2>&1 | tee "$WORK/gate_output.txt"
+          rc=${PIPESTATUS[0]}
+          set -e
+          echo "GATE_EXIT_CODE=$rc" | tee -a "$WORK/gate_output.txt"
+          echo "=== summary.txt ==="
+          cat "$WORK/summary.txt" || true
+          echo "=== summary_datatypes.txt ==="
+          cat "$WORK/summary_datatypes.txt" || true
+          # probe semantics: a gate FAIL is data, not an infra failure
+          exit 0
+
+      - name: Phase timing digest
+        if: always()
+        run: |
+          grep -hE "PROBE-TIMING|ARM_START|ARM_END|GOLD_START|GOLD_OK|ALL_ARMS_DONE|TRUTHCHECK|DTBENCHCHECK" \
+            "$RUNNER_TEMP/gold_run.log" "$RUNNER_TEMP/bench_run.log" 2>/dev/null || true
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macbench-results-${{ matrix.arch }}
+          path: |
+            ${{ runner.temp }}/benchwork/*.log
+            ${{ runner.temp }}/benchwork/*.tsv
+            ${{ runner.temp }}/benchwork/*.txt
+            ${{ runner.temp }}/gold_run.log
+            ${{ runner.temp }}/bench_run.log
+          if-no-files-found: warn
+          retention-days: 30

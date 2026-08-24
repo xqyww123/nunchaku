@@ -30,11 +30,15 @@ REGRESS="$(cd "$(dirname "$0")" && pwd)"
 WORK=${1:?usage: run.sh <workdir>}
 ISA=${ISABELLE:-isabelle}
 COMP=${NUNCHAKU_COMPONENT:-$(cd "$REGRESS/.." && pwd)/component}
+# PROBE(mac): the component's platform dir was hardcoded x86_64-linux; the
+# macOS probe overrides it (x86_64-darwin / arm64-darwin).  Default keeps
+# the original linux behavior.
+PLATFORM_DIR=${NUNCHAKU_PLATFORM:-x86_64-linux}
 mkdir -p "$WORK"
 WORK="$(cd "$WORK" && pwd)"
 
-[ -x "$COMP/x86_64-linux/nunchaku" ] || {
-  echo "run.sh: no executable $COMP/x86_64-linux/nunchaku" >&2; exit 1; }
+[ -x "$COMP/$PLATFORM_DIR/nunchaku" ] || {
+  echo "run.sh: no executable $COMP/$PLATFORM_DIR/nunchaku" >&2; exit 1; }
 
 ISA_ID=$("$ISA" getenv -b ISABELLE_IDENTIFIER)
 REAL_PREFS="$HOME/.isabelle/$ISA_ID/etc/preferences"
@@ -51,11 +55,15 @@ printf '%s\n' "$COMP" > "$FAKE_ETC/components"
 
 export USER_HOME="$WORK/fakehome" HOME="$WORK/fakehome"
 
+# PROBE(mac): the official macOS bundle ships only 32-bit-compact heaps
+# (ML_system_64=false), so the expected value is overridable; default keeps
+# the original linux requirement (true).
 ML64=$("$ISA" options -g ML_system_64)
-[ "$ML64" = true ] || { echo "run.sh: ML_system_64=$ML64 (want true); aborting" >&2; exit 1; }
+[ "$ML64" = "${BENCH_ML64:-true}" ] || {
+  echo "run.sh: ML_system_64=$ML64 (want ${BENCH_ML64:-true}); aborting" >&2; exit 1; }
 NUNHOME=$("$ISA" getenv -b NUNCHAKU_HOME)
-[ "$NUNHOME" = "$COMP/x86_64-linux" ] || {
-  echo "run.sh: NUNCHAKU_HOME=$NUNHOME does not point at $COMP/x86_64-linux" >&2; exit 1; }
+[ "$NUNHOME" = "$COMP/$PLATFORM_DIR" ] || {
+  echo "run.sh: NUNCHAKU_HOME=$NUNHOME does not point at $COMP/$PLATFORM_DIR" >&2; exit 1; }
 NUNVER=$("$ISA" getenv -b NUNCHAKU_VERSION)
 [ "$NUNVER" = "$(cat "$REGRESS/../VERSION")" ] || {
   echo "run.sh: NUNCHAKU_VERSION=$NUNVER does not match VERSION ($(cat "$REGRESS/../VERSION"))" >&2
