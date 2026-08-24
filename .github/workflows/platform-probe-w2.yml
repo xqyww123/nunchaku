@@ -149,6 +149,18 @@ jobs:
           & $env:BASH_EXE --login "$env:WS_POSIX/.github/scripts/w2-build.sh"
           exit $LASTEXITCODE
 
+      # follow-up measurement: full test suite under the Cygwin toolchain.
+      # Placed BEFORE the smbc step, which downgrades containers to 2.x and
+      # would break the test build.  continue-on-error so a red test suite
+      # still lets the rest of the proven pipeline run; the step log carries
+      # the verdict (RUNTEST-EXIT line).
+      - name: Full test suite (dune runtest)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          & $env:BASH_EXE --login "$env:WS_POSIX/.github/scripts/w2-runtest.sh"
+          exit $LASTEXITCODE
+
       # 0.4.1 (the certified version) is impossible on OCaml 4.14 -- see the
       # evidence note at the top of w2-smbc.sh; 0.6 is the nearest that builds.
       - name: Build smbc 0.6 (nearest buildable)
