@@ -6,6 +6,10 @@ WS="$(cygpath -u "$GITHUB_WORKSPACE")"
 cd "$WS"
 
 SECONDS=0
+# dune >= 3.17 vendors blake3-mini, whose dune file breaks under Cygwin
+# ("Multiple definitions for the same object file \"blake3\"", measured,
+# round 5 with dune 3.24.2).  Pin the last pre-blake3 dune.
+"$ISA" env bash -c 'isabelle_opam pin add -y dune 3.16.1'
 if ! "$ISA" env bash -c \
     'cd "'"$WS"'" && isabelle_opam install -y --deps-only ./nunchaku.opam'; then
   echo "deps-only install from ./nunchaku.opam failed; falling back to explicit list"

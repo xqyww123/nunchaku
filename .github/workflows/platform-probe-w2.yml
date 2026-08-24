@@ -127,9 +127,9 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ~\.opam
-          key: w2-opam-v1-${{ hashFiles('nunchaku.opam') }}
+          key: w2-opam-v2-${{ hashFiles('nunchaku.opam') }}
           restore-keys: |
-            w2-opam-v1-
+            w2-opam-
 
       - name: ocaml_setup_base (opam init + OCaml 4.14.1 switch)
         shell: pwsh
@@ -162,7 +162,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: ~\.opam
-          key: w2-opam-v1-${{ hashFiles('nunchaku.opam') }}
+          key: w2-opam-v2-${{ hashFiles('nunchaku.opam') }}
 
       - name: Fetch pinned cvc5 (Win64 static)
         shell: pwsh
