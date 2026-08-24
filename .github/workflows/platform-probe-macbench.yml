@@ -70,8 +70,11 @@ jobs:
         run: |
           mkdir -p ~/isabelle-dist
           t0=$SECONDS
+          # isabelle.in.tum.de 301-redirects to plain-http dist.isabelle.cit.tum.de,
+          # whose port 80 is unreachable from GitHub runners (measured 2026-08-24);
+          # the same host serves the file fine over https
           curl -fSL -o ~/isabelle-dist/"$ISA_TAR" \
-            "https://isabelle.in.tum.de/dist/$ISA_TAR"
+            "https://dist.isabelle.cit.tum.de/dist/$ISA_TAR?token=Isabelle"
           echo "PROBE-TIMING isabelle-download $((SECONDS - t0))s"
           ls -lh ~/isabelle-dist
 
