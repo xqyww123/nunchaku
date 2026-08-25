@@ -73,6 +73,50 @@ particularly useful options are:
   after each transformation.
 - `-nc` to disable colored output if your terminal does not support it..
 
+[[env-vars]]
+== Locating the backend solvers
+
+Each backend resolves its binary through one environment variable:
+
+[cols="1,1", options="header"]
+|===
+| variable | backend
+| `NUNCHAKU_CVC5` | cvc5
+| `NUNCHAKU_CVC4` | CVC4
+| `NUNCHAKU_KODKODI` | kodkodi
+| `NUNCHAKU_PARADOX` | paradox
+| `NUNCHAKU_SMBC` | smbc
+|===
+
+The rules are the same for all five:
+
+- *unset* — the binary is looked up in the `PATH` under its plain name
+  (`cvc5`, `smbc`, …).  This is the default and nothing about it has changed.
+- *set to a path* — that path is used, for both the availability check and the
+  invocation.  Set it to steer which build runs without rearranging the `PATH`.
+- *set to the empty string* — an error naming the variable, not a silent
+  fallback to the `PATH`.  The empty string is never a valid program name, and
+  a run that silently used a different solver than the caller intended is the
+  failure mode these variables exist to prevent.  The variable is only read for
+  a solver that was actually requested, so an empty value for a solver you did
+  not ask for costs nothing.
+
+`nunchaku --debug 3` prints, for every backend it considers, which variable was
+consulted, whether it was set, and which path it settled on.
+
+NOTE: the binary published with a release is *not* the Isabelle component.  The
+component is that binary plus the wrapper in `component/x86_64-linux/nunchaku`
+plus the pinned solvers it exports, and it is the combination `regress/` and the
+release gate certify.  Run the bare binary and the solvers come from your
+`PATH`, whatever they happen to be.
+
+NOTE: the text of a backend error reaches the user on *stdout*, inside the
+`UNKNOWN (BACKEND_ERROR …)` line.  Isabelle's frontend tests
+`String.isSubstring "TIMEOUT"` on that stream before it tests for the `UNKNOWN`
+prefix, so a solver message that happens to contain the word TIMEOUT is
+reported by Isabelle as "Time out".  Pre-existing and harmless, but worth
+knowing before chasing a phantom timeout.
+
 == Contact
 
 There is a dedicated mailing list at nunchaku-users@lists.gforge.inria.fr

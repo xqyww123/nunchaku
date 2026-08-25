@@ -63,7 +63,14 @@ assembled one):
   the repository's `VERSION` file.
 
 smbc comes from the Isabelle distribution (`contrib/smbc-*`); the frontend
-puts it on the PATH itself.
+puts it on the PATH itself.  The wrapper exports only `NUNCHAKU_CVC5`, so
+smbc, kodkodi and paradox are whatever Isabelle's PATH offers even in the
+shipped configuration.  If a solver is ever bundled into the component, the
+wrapper must export its variable too (`NUNCHAKU_SMBC="$NUN_DIR/solvers/smbc"`,
+and likewise for kodkodi) — otherwise Isabelle's `$SMBC_HOME` binary wins and
+what runs is not what was certified.  Never export an empty value: an empty
+`NUNCHAKU_*` is an error, and Isabelle requests all four of
+`cvc5 kodkod paradox smbc`, so one empty value fails every call.
 
 ## 3. Gold test (seconds; before anything else)
 
