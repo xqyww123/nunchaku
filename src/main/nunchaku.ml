@@ -684,7 +684,7 @@ let main_model ~output statements =
       Format.printf "@[<hv2>%a@]@." Sexp_lib.pp s
     | Res.Sat (m,i), O_nunchaku when m.Model.potentially_spurious ->
       Format.printf "@[<v>@[<v2>SAT: (potentially spurious) {@,@[<v>%a@]@]@,}@,%a@]@."
-        (Model.pp P.pp' P.pp) m Res.pp_info i;
+        Model.Default.pp_standard m Res.pp_info i;
     | Res.Sat (m,i), O_nunchaku ->
       Format.printf "@[<v>@[<v2>SAT: {@,@[<v>%a@]@]@,}@,%a@]@."
         Model.Default.pp_standard m Res.pp_info i;
