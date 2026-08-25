@@ -22,6 +22,7 @@ Shipping configuration (what all of this certifies): `solvers = "cvc5 smbc"`,
 | `gate.sh <workdir>` | pass/fail verdict of the fresh TSVs against `baseline/` |
 | `baseline/` | checked-in reference TSVs and summaries |
 | `bash_server_main.scala` | helper needed by both engines (below) |
+| `tools/` | diagnostics that need no certification run: capture the problems Isabelle emits, and dump the metadata that drives the spurious-model marking (§6) |
 
 Data format: each benchmark line is
 `RESULT\tclass\tid\ttruth\tengine\ttier\tverdict\tms\tmodel`, ending with
@@ -133,3 +134,46 @@ If the run improved on the baseline (allowed drifts only), refresh
 Follow `RELEASE_CHECKLIST.md` in the packaging repository
 (`isabelle-packaging-ci`); versions come from the `VERSION` file at the
 repository root and are never written by hand.
+
+## 6. Tools: which goals does the marking touch?
+
+`tools/` answers, in about a minute and without a single solver call,
+the question that otherwise costs a full arm sweep: *for which goals may
+nunchaku's answer be untrustworthy, and in which direction?*
+
+```bash
+./regress/tools/capture.sh   <workdir>                       # a few minutes
+./regress/tools/dump_meta.sh <workdir>/capture-component/problems/*.nun
+```
+
+`capture.sh` runs `bench.ML` and `bench2.ML` against a capture-only
+component whose `nunchaku` saves the problem file it is handed and answers
+`UNKNOWN` at once.  What comes out is exactly what Isabelle emits per
+goal -- `<workdir>/capture-component/problems/pNNN.nun` -- plus
+`<workdir>/goalmap.txt` mapping each file to its goal id, read off the
+`RESULT` lines in call order.  No solver runs, so nothing depends on which
+backend wins a race.
+
+`dump_meta.sh` prints, per problem and per encoding branch, the two flags
+the encoding pipeline computes:
+
+- `sat_means_unknown` -- a model may be spurious, so it is marked and (by
+  default) suppressed;
+- `unsat_means_unknown` -- models were lost, so an `unsat` claims nothing
+  and is reported as `UNKNOWN (INCOMPLETE ...)`.
+
+Both are read straight from the pipeline, which is why the tool needs no
+solver: the flags are set while the problem is encoded, before any backend
+is called.  A problem is encoded once per branch of the pipeline and the
+branches can disagree, so all three are printed: `cvc5` (shared with cvc4),
+`kodkod` (shared with paradox) and `smbc`.  Which branch is asked matters:
+on the benchmark as of the 0.5.3 certification, three goals carry
+`unsat_means_unknown` in the `cvc5` branch and only one does in the `smbc`
+branch.
+
+Two things worth knowing before reading the output.  The goal numbering is
+this run's own -- `p000` is the first goal `bench.ML` reports, whereas the
+capture that the 0.5.3 spurious-model work quotes had a gold-test call at
+`p000`, so its indices are one higher.  And `capture.sh` refuses to write
+a goal map whose length differs from the number of captured files, since a
+goal that never reached the tool would shift every later entry.

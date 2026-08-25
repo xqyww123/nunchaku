@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Capture-only stand-in for the nunchaku binary: saves the problem file the
+# frontend hands us and answers UNKNOWN at once, so a benchmark run records
+# what Isabelle emits without any solver running.  Problems land next to
+# this script, in ../problems, numbered in call order.
+NUN_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROBS="$NUN_DIR/../problems"
+mkdir -p "$PROBS"
+for a in "$@"; do last="$a"; done   # the problem file is the last argument
+n=$(find "$PROBS" -name 'p*.nun' | wc -l)
+cp "$last" "$PROBS/$(printf 'p%03d' "$n").nun" 2>/dev/null || true
+printf 'UNKNOWN\n(OTHER {backend:capture, time:0.0s} problem captured)\n'
+exit 0
