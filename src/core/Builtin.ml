@@ -245,7 +245,9 @@ let to_sexp
         str (CCFormat.sprintf "select-%s-%d" (ID.name id) n)
       | `Undefined_self t ->
         lst [str "?__"; cterm t]
-      | `Undefined_atom _ -> str "?__"
+      (* distinct unknowns must stay distinguishable here too; mirrors the
+         default printer above *)
+      | `Undefined_atom (id,_) -> str (CCFormat.sprintf "?__%d" (ID.id id))
       | `Unparsable ty ->
         lst [str "?__unparsable"; cterm ty]
       | `Guard (a, b) ->
