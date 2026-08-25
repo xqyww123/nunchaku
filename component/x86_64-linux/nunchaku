@@ -2,7 +2,11 @@
 # Resolves its own dir on purpose -- do NOT read $NUNCHAKU_HOME here
 # (the bundled cvc5 wrapper reads $CVC5_HOME and breaks when unset).
 NUN_DIR="$(cd "$(dirname "$0")" && pwd)"
+# Pin every solver the component ships.  Isabelle puts $SMBC_HOME on PATH, so
+# without the second line the distribution's smbc would win and the shipped
+# combination would not be the certified one.
 export NUNCHAKU_CVC5="$NUN_DIR/solvers/cvc5"
+export NUNCHAKU_SMBC="$NUN_DIR/solvers/smbc"
 # --no-spurious-models is the binary's own default since 0.5.3, and the flag
 # is kept as an accepted no-op; passing it here keeps the component from
 # depending on that default.  Why the default is what it is: the stock

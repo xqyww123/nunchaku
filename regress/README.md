@@ -61,18 +61,22 @@ assembled one):
 - `x86_64-linux/solvers/cvc5` — a static cvc5 **≥ 1.3.1** (the backend
   sends `get-model-domain-elements`, which older cvc5 answers with an
   error);
+- `x86_64-linux/solvers/smbc` — smbc **0.6.1**, built from
+  `github.com/c-cube/smbc` tag `v0.6.1`.  0.4.1, which the Isabelle
+  distribution ships, cannot be rebuilt on any current toolchain: its
+  dependencies cap OCaml below 4.08, and that era has no arm64 macOS
+  backend at all.  0.6.1 needs `containers 2.8.1` from the opam archive
+  repository (it uses the `containers.sexp` sublibrary that 3.x removed);
 - substitute `@NUNCHAKU_VERSION@` in `etc/settings` with the content of
   the repository's `VERSION` file.
 
-smbc comes from the Isabelle distribution (`contrib/smbc-*`); the frontend
-puts it on the PATH itself.  The wrapper exports only `NUNCHAKU_CVC5`, so
-smbc, kodkodi and paradox are whatever Isabelle's PATH offers even in the
-shipped configuration.  If a solver is ever bundled into the component, the
-wrapper must export its variable too (`NUNCHAKU_SMBC="$NUN_DIR/solvers/smbc"`,
-and likewise for kodkodi) — otherwise Isabelle's `$SMBC_HOME` binary wins and
-what runs is not what was certified.  Never export an empty value: an empty
-`NUNCHAKU_*` is an error, and Isabelle requests all four of
-`cvc5 kodkod paradox smbc`, so one empty value fails every call.
+Both solvers are pinned by the wrapper, which is what makes the certified
+combination the one that runs: Isabelle puts `$SMBC_HOME` on the PATH, so
+without `NUNCHAKU_SMBC` the distribution's 0.4.1 would win.  kodkodi and
+paradox are not bundled and stay whatever Isabelle's PATH offers; a wrapper
+that ever bundles them must export their variables too.  Never export an
+empty value: an empty `NUNCHAKU_*` is an error, and Isabelle requests all
+four of `cvc5 kodkod paradox smbc`, so one empty value fails every call.
 
 ## 3. Gold test (seconds; before anything else)
 
