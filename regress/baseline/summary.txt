@@ -1,76 +1,76 @@
 == Per class x engine x tier ==
 class	engine	tier	nF	genuine	quasi	potential	none/unk	err/toG	nT	SPURIOUS	modelMiss	medianMs	p90Ms
-arith_lin	nitpick	1	4	4	0	0	0	0	3	0	0	518	558
-arith_lin	nitpick	5	4	4	0	0	0	0	3	0	0	546	555
-arith_lin	nunchaku	1	4	3	0	0	1	0	3	0	0	1019	1022
+arith_lin	nitpick	1	4	4	0	0	0	0	3	0	0	505	512
+arith_lin	nitpick	5	4	4	0	0	0	0	3	0	0	515	537
+arith_lin	nunchaku	1	4	3	0	0	1	0	3	0	0	1020	1026
 arith_lin	nunchaku	5	4	3	0	0	1	0	3	0	0	5019	5029
-arith_lin	nunchaku_ship	1	4	3	0	0	1	0	3	0	0	1018	1025
-arith_lin	nunchaku_ship	5	4	3	0	0	1	0	3	0	0	1607	5025
-arith_lin	nunchaku_smbc	1	4	3	0	0	1	0	3	0	0	1020	1025
-arith_lin	nunchaku_smbc	5	4	3	0	0	1	0	3	0	0	5020	5023
-arith_nl	nitpick	1	4	4	0	0	0	0	4	0	0	800	1242
-arith_nl	nitpick	5	4	4	0	0	0	0	4	0	0	1778	4061
-arith_nl	nunchaku	1	4	2	0	0	2	0	4	0	0	1023	1029
-arith_nl	nunchaku	5	4	2	0	0	2	0	4	0	0	5022	5032
-arith_nl	nunchaku_ship	1	4	2	0	0	2	0	4	0	0	91	1021
-arith_nl	nunchaku_ship	5	4	2	0	0	2	0	4	0	0	2106	5018
-arith_nl	nunchaku_smbc	1	4	2	0	0	2	0	4	0	0	114	1026
-arith_nl	nunchaku_smbc	5	4	2	0	0	2	0	4	0	0	111	5019
-list	nitpick	1	5	5	0	0	0	0	3	0	0	711	1388
-list	nitpick	5	5	5	0	0	0	0	3	0	0	748	3489
-list	nunchaku	1	5	4	0	0	1	0	3	0	0	601	1030
-list	nunchaku	5	5	5	0	0	0	0	3	0	0	945	5023
-list	nunchaku_ship	1	5	4	0	0	1	0	3	0	0	527	1023
-list	nunchaku_ship	5	5	5	0	0	0	0	3	0	0	36	5025
-list	nunchaku_smbc	1	5	5	0	0	0	0	3	0	0	150	1035
-list	nunchaku_smbc	5	5	5	0	0	0	0	3	0	0	1029	5025
-opt	nitpick	1	4	4	0	0	0	0	3	0	0	537	608
-opt	nitpick	5	4	4	0	0	0	0	3	0	0	665	787
-opt	nunchaku	1	4	4	0	0	0	0	3	0	0	42	46
-opt	nunchaku	5	4	4	0	0	0	0	3	0	0	49	51
-opt	nunchaku_ship	1	4	4	0	0	0	0	3	0	0	29	33
-opt	nunchaku_ship	5	4	4	0	0	0	0	3	0	0	28	33
-opt	nunchaku_smbc	1	4	4	0	0	0	0	3	0	0	45	49
-opt	nunchaku_smbc	5	4	4	0	0	0	0	3	0	0	37	43
-set	nitpick	1	3	2	0	1	0	0	3	0	0	473	502
-set	nitpick	5	3	3	0	0	0	0	3	0	0	483	536
-set	nunchaku	1	3	2	0	0	1	0	3	0	0	144	1024
-set	nunchaku	5	3	2	0	0	1	0	3	0	0	180	2620
-set	nunchaku_ship	1	3	2	0	0	1	0	3	0	0	84	1018
-set	nunchaku_ship	5	3	2	0	0	1	0	3	0	0	108	387
-set	nunchaku_smbc	1	3	2	0	0	1	0	3	0	0	183	1024
-set	nunchaku_smbc	5	3	2	0	0	1	0	3	0	0	125	4877
-quant	nitpick	1	3	3	0	0	0	0	3	0	0	511	551
-quant	nitpick	5	3	3	0	0	0	0	3	0	0	509	610
-quant	nunchaku	1	3	1	0	0	2	0	3	0	0	1020	1022
-quant	nunchaku	5	3	1	0	0	2	0	3	0	0	4581	4872
-quant	nunchaku_ship	1	3	1	0	0	2	0	3	0	0	1018	1022
-quant	nunchaku_ship	5	3	1	0	0	2	0	3	0	0	4138	4167
-quant	nunchaku_smbc	1	3	1	0	0	2	0	3	0	0	1022	1025
-quant	nunchaku_smbc	5	3	1	0	0	2	0	3	0	0	4717	5022
-exwrap	nitpick	1	4	0	0	1	3	0	3	0	0	497	522
-exwrap	nitpick	5	4	0	0	1	3	0	3	0	0	583	657
-exwrap	nunchaku	1	4	0	0	0	4	0	3	0	0	854	961
-exwrap	nunchaku	5	4	0	0	0	4	0	3	0	0	4955	5016
+arith_lin	nunchaku_ship	1	4	3	0	0	1	0	3	0	0	1017	1027
+arith_lin	nunchaku_ship	5	4	3	0	0	1	0	3	0	0	1506	5020
+arith_lin	nunchaku_smbc	1	4	3	0	0	1	0	3	0	0	1019	1030
+arith_lin	nunchaku_smbc	5	4	3	0	0	1	0	3	0	0	1568	5020
+arith_nl	nitpick	1	4	4	0	0	0	0	4	0	0	789	1257
+arith_nl	nitpick	5	4	4	0	0	0	0	4	0	0	1702	3955
+arith_nl	nunchaku	1	4	2	0	0	2	0	4	0	0	1021	1032
+arith_nl	nunchaku	5	4	2	0	0	2	0	4	0	0	5021	5028
+arith_nl	nunchaku_ship	1	4	2	0	0	2	0	4	0	0	56	1020
+arith_nl	nunchaku_ship	5	4	2	0	0	2	0	4	0	0	47	5017
+arith_nl	nunchaku_smbc	1	4	2	0	0	2	0	4	0	0	68	1020
+arith_nl	nunchaku_smbc	5	4	2	0	0	2	0	4	0	0	77	5023
+list	nitpick	1	5	5	0	0	0	0	3	0	0	591	1359
+list	nitpick	5	5	5	0	0	0	0	3	0	0	616	3348
+list	nunchaku	1	5	4	0	0	1	0	3	0	0	577	1029
+list	nunchaku	5	5	5	0	0	0	0	3	0	0	868	5023
+list	nunchaku_ship	1	5	5	0	0	0	0	3	0	0	35	1026
+list	nunchaku_ship	5	5	5	0	0	0	0	3	0	0	31	5021
+list	nunchaku_smbc	1	5	5	0	0	0	0	3	0	0	30	1023
+list	nunchaku_smbc	5	5	5	0	0	0	0	3	0	0	37	5024
+opt	nitpick	1	4	4	0	0	0	0	3	0	0	487	531
+opt	nitpick	5	4	4	0	0	0	0	3	0	0	520	556
+opt	nunchaku	1	4	4	0	0	0	0	3	0	0	40	44
+opt	nunchaku	5	4	4	0	0	0	0	3	0	0	35	47
+opt	nunchaku_ship	1	4	4	0	0	0	0	3	0	0	24	25
+opt	nunchaku_ship	5	4	4	0	0	0	0	3	0	0	22	23
+opt	nunchaku_smbc	1	4	4	0	0	0	0	3	0	0	27	31
+opt	nunchaku_smbc	5	4	4	0	0	0	0	3	0	0	28	30
+set	nitpick	1	3	2	0	1	0	0	3	0	0	484	505
+set	nitpick	5	3	3	0	0	0	0	3	0	0	474	500
+set	nunchaku	1	3	2	0	0	1	0	3	0	0	260	1025
+set	nunchaku	5	3	2	0	0	1	0	3	0	0	147	2812
+set	nunchaku_ship	1	3	2	0	0	1	0	3	0	0	108	491
+set	nunchaku_ship	5	3	2	0	0	1	0	3	0	0	112	467
+set	nunchaku_smbc	1	3	2	0	0	1	0	3	0	0	369	1037
+set	nunchaku_smbc	5	3	2	0	0	1	0	3	0	0	138	4093
+quant	nitpick	1	3	3	0	0	0	0	3	0	0	482	496
+quant	nitpick	5	3	3	0	0	0	0	3	0	0	511	582
+quant	nunchaku	1	3	1	0	0	2	0	3	0	0	1020	1021
+quant	nunchaku	5	3	1	0	0	2	0	3	0	0	4566	4859
+quant	nunchaku_ship	1	3	1	0	0	2	0	3	0	0	1022	1024
+quant	nunchaku_ship	5	3	1	0	0	2	0	3	0	0	4134	4154
+quant	nunchaku_smbc	1	3	1	0	0	2	0	3	0	0	1021	1022
+quant	nunchaku_smbc	5	3	1	0	0	2	0	3	0	0	4742	5018
+exwrap	nitpick	1	4	0	0	1	3	0	3	0	0	491	527
+exwrap	nitpick	5	4	0	0	1	3	0	3	0	0	535	640
+exwrap	nunchaku	1	4	0	0	0	4	0	3	0	0	892	1019
+exwrap	nunchaku	5	4	0	0	0	4	0	3	0	0	4854	5019
 exwrap	nunchaku_ship	1	4	0	0	0	4	0	3	0	0	35	137
-exwrap	nunchaku_ship	5	4	0	0	0	4	0	3	0	0	35	122
-exwrap	nunchaku_smbc	1	4	0	0	0	4	0	3	0	0	878	991
-exwrap	nunchaku_smbc	5	4	0	0	0	4	0	3	0	0	4789	5003
-ho	nitpick	1	4	4	0	0	0	0	4	0	0	512	556
-ho	nitpick	5	4	4	0	0	0	0	4	0	0	521	648
-ho	nunchaku	1	4	1	0	0	3	0	4	0	0	1019	1024
-ho	nunchaku	5	4	1	0	0	3	0	4	0	0	4710	5023
-ho	nunchaku_ship	1	4	1	0	0	3	0	4	0	0	680	1021
-ho	nunchaku_ship	5	4	1	0	0	3	0	4	0	0	2354	5024
-ho	nunchaku_smbc	1	4	1	0	0	3	0	4	0	0	801	1028
-ho	nunchaku_smbc	5	4	1	0	0	3	0	4	0	0	4917	5026
+exwrap	nunchaku_ship	5	4	0	0	0	4	0	3	0	0	32	137
+exwrap	nunchaku_smbc	1	4	0	0	0	4	0	3	0	0	948	1022
+exwrap	nunchaku_smbc	5	4	0	0	0	4	0	3	0	0	4887	5022
+ho	nitpick	1	4	4	0	0	0	0	4	0	0	487	581
+ho	nitpick	5	4	4	0	0	0	0	4	0	0	511	555
+ho	nunchaku	1	4	1	0	0	3	0	4	0	0	1019	1028
+ho	nunchaku	5	4	1	0	0	3	0	4	0	0	4755	5023
+ho	nunchaku_ship	1	4	1	0	0	3	0	4	0	0	671	1023
+ho	nunchaku_ship	5	4	1	0	0	3	0	4	0	0	2225	5022
+ho	nunchaku_smbc	1	4	1	0	0	3	0	4	0	0	1020	1032
+ho	nunchaku_smbc	5	4	1	0	0	3	0	4	0	0	4756	5025
 
 == Overall (false goals: genuine-rate; true goals: spurious count; model losses) ==
-nitpick	1s	genuine 26/31 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 523ms
-nitpick	5s	genuine 27/31 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 549ms
-nunchaku	1s	genuine 17/31 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 605ms
-nunchaku	5s	genuine 18/31 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 1580ms
-nunchaku_ship	1s	genuine 17/31 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 65ms
-nunchaku_ship	5s	genuine 18/31 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 42ms
-nunchaku_smbc	1s	genuine 18/31 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 143ms
-nunchaku_smbc	5s	genuine 18/31 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 133ms
+nitpick	1s	genuine 26/31 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 504ms
+nitpick	5s	genuine 27/31 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 535ms
+nunchaku	1s	genuine 17/31 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 865ms
+nunchaku	5s	genuine 18/31 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 1525ms
+nunchaku_ship	1s	genuine 18/31 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 43ms
+nunchaku_ship	5s	genuine 18/31 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 38ms
+nunchaku_smbc	1s	genuine 18/31 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 89ms
+nunchaku_smbc	5s	genuine 18/31 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 99ms

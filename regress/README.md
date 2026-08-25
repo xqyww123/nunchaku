@@ -158,17 +158,14 @@ and each is a consequence of a change this release makes on purpose:
 - 28 cells went from `model=no` to `model=yes`: countermodels that used to
   reach Isabelle with a token its parser rejects — costing the whole model
   block — are now shown.
-- `ls2/nunchaku_ship/1s` and `d2/nunchaku_smbc/1s` lost a countermodel they
-  used to produce.  **This baseline records them wrongly**, and the reason is
-  worth keeping: it was first read as the honest cost of §19 (the budget is a
-  real deadline now, so a 1 s call gets one second).  It was not.  Both cells
-  spent 1022-1023 ms and answered nothing, while the *same goals* answered in
-  35-43 ms in a neighbouring arm of the same run — the signature of the
-  descriptor race fixed in `PATCHES.md` §22, not of a goal that needs more
-  time.  With that fix the three affected goals (`ls2`, `d2`, `d4`) answer in
-  0 of 50 runs lost instead of 13-20 of 50.  **The baseline must be
-  re-certified against a binary carrying §22**; until it is, these cells and
-  the `ms` column of any cell near 1022 ms are suspect.
+- `ls2/nunchaku_ship/1s` and `d2/nunchaku_smbc/1s` **recovered** a countermodel
+  the 0.5.3-era baseline recorded as lost.  That baseline was taken before
+  `PATCHES.md` §22: both cells spent 1022-1023 ms answering nothing, while the
+  same goals answered in 30-43 ms in a neighbouring arm of the same run — the
+  descriptor race, not a goal that needs more time.  With §22 they answer in
+  30 and 32 ms, and this baseline records that.  `s4/nunchaku_ship/1s` and
+  `o4/nitpick/1s` moved from `unknown` to `none` for the same reason and are
+  the same verdict to the gate.
 
 ## 5. Release
 
