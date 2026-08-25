@@ -1107,3 +1107,50 @@ repro, as "the same number".
 - **Why it is worth taking even at zero milliseconds**: the old shape asks
   every future transformation to remember that `singleton_if` is eager.
   Nineteen call sites did not.
+
+## 24. "Is this solver there?" is asked in process, and once (commit: TBD)
+
+- **Motivation**: `Utils.external_program_available` answered by running
+  `Sys.command "test -f … && test -x …"` (or `command -v …` for a bare name),
+  which forks and execs `/bin/sh` to stat one file.  Worse, the question was
+  asked twice per requested solver -- once by the unavailable-solver warning
+  of §11, once by that solver's own pipeline builder -- so a run with
+  `--solvers cvc5,smbc` spawned **four shell processes to stat two files, two
+  of them asking the identical question**, on the critical path of every call.
+  Nothing tied the two answers together either: between the warning and the
+  build, the file system could change and the run would warn about a solver it
+  then used, or the reverse.
+- **Repro**: `strace -f -e trace=execve` on one call of the shipping
+  configuration; before: 7 `execve("/bin/sh", …)`, of which 3 are the backends
+  actually being launched; after: 3.
+- **Fix**, in two halves.  `Unix.stat` for "is a regular file" plus
+  `Unix.access … [X_OK]`, and an in-process `$PATH` walk for a bare name,
+  replace the shell.  The regular-file test is not decoration: a directory
+  passes a bare executability test, which is why the shell form also had
+  `-f`.  And the question is now asked **once per run**: `usable_solvers_ ()`
+  in `nunchaku.ml` computes "requested, and present" for the requested
+  solvers, and that one list is passed to the warning and to each
+  `make_<solver>`.  There is no cache to be stale or to be reached from a
+  task thread, because there is nothing to look up twice; one answer per run
+  is also all there is to have, since which binary a backend would invoke is
+  fixed by `$NUNCHAKU_<SOLVER>` and `$PATH` and nothing in the process
+  changes either.
+- **One deliberate behaviour change**: the shell's `command -v` also answers
+  yes for a shell builtin or function of that name, and `Unix.access` does
+  not.  No solver binary has a use for that reading.  A second, smaller one:
+  at `--debug 3` a backend's "X is available" line is now printed once per
+  run instead of once per ask.
+- **Verification**: the four cases by hand, on the shipping configuration --
+  an absolute path that exists (available); one that does not
+  (`[Warning solver not available: cvc5]`); one that is a **directory**
+  (`/tmp`, the same warning); and a bare name found on `$PATH` (available).
+- **Effect**: measured here on the 79 captured Isabelle problems, 5
+  interleaved rounds x 2 builds at `--timeout 1` (395 pairs, load 4.22 ->
+  3.65): paired median **-1.30 ms**, p25 -3.80, p75 +0.30, faster in 278 of
+  395 pairs; at the 5 s tier over 2 rounds, **-2.00 ms**, faster in 113 of
+  158.  Verdicts identical on all 79 problems at both tiers, with one
+  exception that is not this patch's doing: `p034` answered `UNSAT` in one of
+  five 1 s rounds after and in none before.  `p034`'s only winning cvc5 arm
+  lands at 0.4-0.6 s against a 1 s wall, so it answers or not according to
+  machine load; a 40-round interleaved run of the two builds on that goal
+  alone gives 5 of 40 before and 6 of 40 after.
