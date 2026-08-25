@@ -506,6 +506,16 @@ let unknown_head_ (t:term): (ID.t * term list) option =
     | TI.App (h, args) -> (match hd h with Some id -> Some (id, args) | None -> None)
     | _ -> (match hd t with Some id -> Some (id, []) | None -> None)
 
+(* Recorded, not fixed: [E.to_opt (T.ty ~env _)] below and at the sites that
+   read a converted term's type reads "this term has no type we can name",
+   but [T.ty] (TermInner.ml:1679-1681) is `try … with e -> err_of_exn e`,
+   so it collapses *every* exception -- an unknown id, an ill-typed
+   application, an internal failure -- into the same [None].  A malformed
+   model and a hole we simply have not typed yet are indistinguishable here.
+   Two of the four sites that had this shape disappeared when the
+   re-conversions were deleted; the remaining ones only *learn*, so a
+   collapsed exception costs a recovery and never a verdict. *)
+
 (* learn "the already-converted term [t] was expected to have type [ty]".
    O(α(n)) and converts nothing. *)
 let push_ty ~env (st:parse_state) (ty:ty) (t:term): unit =

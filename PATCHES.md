@@ -172,6 +172,14 @@ at the next sync.  Base commit: d23a876.
   `m_cross2.txt` are the same model with its two entries swapped and now
   give the same answer.  130 problems from `bench/`, `data/` and
   `regress/gold.nun` with real smbc 0.6.1: no output change.
+- **Recorded, not fixed**: the parser asks "does this converted term have a
+  type?" through `E.to_opt (T.ty ~env _)`, and `T.ty` is
+  `try … with e -> err_of_exn e`, so it collapses *every* exception into the
+  same `None` -- an unknown id, an ill-typed application and an internal
+  failure are indistinguishable there.  Two of the four sites with that
+  shape disappeared with the re-conversions; the survivors only *learn*, so
+  a collapsed exception costs a recovery and never a verdict.  Noted in the
+  source next to `push_ty`.
 - **Upstream PR**: not submitted yet.
 
 ## 8. The smbc model parser treats its input as untrusted
