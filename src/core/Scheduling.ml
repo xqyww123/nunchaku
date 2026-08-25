@@ -322,7 +322,7 @@ type 'res running_task =
 
 type 'a run_result =
   | Res_one of 'a
-  | Res_list of 'a list
+  | Res_list of 'a list * exn list
   | Res_fail of exn
 
 type 'res pool = {
@@ -377,20 +377,23 @@ let start_task p t =
         ~f:(fun () ->
           p.active <- remove_rtask_ id p.active;
           begin match res, p.pool_state with
-            | Fut.Done (x, short), Res_list l ->
+            | Fut.Done (x, short), Res_list (l, fails) ->
               begin
                 try
                   (* [post] decides the result and the shortcut together:
                      it may withhold the shortcut the task asked for *)
                   begin match t_inner.Task.post (x, short) with
-                    | y, No_shortcut -> p.pool_state <- Res_list (y::l)
+                    | y, No_shortcut -> p.pool_state <- Res_list (y::l, fails)
                     | y, Shortcut -> p.pool_state <- Res_one y
                   end
                 with e ->
+                  (* [post] is our own decoding, not the solver's doing *)
                   p.pool_state <- Res_fail e
               end
-            | Fut.Fail e, Res_list _ ->
-              p.pool_state <- Res_fail e;
+            | Fut.Fail e, Res_list (l, fails) ->
+              (* one task raising is not the pool's failure: the others are
+                 still running and may answer *)
+              p.pool_state <- Res_list (l, e :: fails)
             | Fut.Stopped, _
             | _, (Res_one _ | Res_fail _) -> ()
           end;
@@ -412,7 +415,12 @@ let rec run_pool pool =
     | [], [], _ ->
       Utils.debug ~lock:true ~section 2 "all tasks done";
       Mutex.unlock pool.lock;
-      pool.pool_state
+      begin match pool.pool_state with
+        | Res_list ([], e :: _) ->
+          (* nobody answered at all: the exception is the only news *)
+          Res_fail e
+        | st -> st
+      end
     | task :: todo_tl, _, Res_list _ ->
       if List.length pool.active < pool.j
       then (
@@ -446,7 +454,7 @@ let run ~j ~deadline tasks =
   let pool = {
     todo=List.sort Task.compare_prio tasks; (* sort by increasing 'prio' *)
     active=[];
-    pool_state = Res_list [];
+    pool_state = Res_list ([], []);
     task_id=0;
     deadline;
     total_alloted_time=(deadline -. Unix.gettimeofday());
@@ -471,23 +479,40 @@ let run ~j ~deadline tasks =
     run ~j:3 ~deadline:5. CCList.(1 -- 10 |> map mk))
 *)
 
+(* a task that raises fails the run only if nobody else answered *)
 (*$=
   (Res_fail Exit) ( \
     let mk i = Task.make (fun ~deadline:_ () -> if i=5 then raise Exit else i, No_shortcut) in \
+    run ~j:3 ~deadline:5. [mk 5])
+*)
+
+(*$T
+  (match ( \
+     let mk i = Task.make (fun ~deadline:_ () -> if i=5 then raise Exit else i, No_shortcut) in \
+     run ~j:3 ~deadline:5. CCList.(1 -- 10 |> map mk)) with \
+   | Res_list (l, [Exit]) -> List.sort Stdlib.compare l = CCList.(1--4) @ CCList.(6--10) \
+   | _ -> false)
+*)
+
+(* one task raises, another answers: the answer wins *)
+(*$=
+  (Res_one 7) ( \
+    let mk i = Task.make (fun ~deadline:_ () -> \
+      if i=5 then raise Exit else if i=7 then i, Shortcut else i, No_shortcut) in \
     run ~j:3 ~deadline:5. CCList.(1 -- 10 |> map mk))
 *)
 
 (* a [post] that withholds the shortcut must not end the race *)
 (*$=
-  (Res_list [42]) ( \
+  (Res_list ([42], [])) ( \
     let t = Task.make (fun ~deadline:_ () -> 42, Shortcut) \
       |> Task.map_res ~f:(fun (x,_) -> x, No_shortcut) in \
     run ~j:1 ~deadline:5. [t])
 *)
 
 (*$=
-  (Res_list CCList.(1--10)) ( \
+  (Res_list (CCList.(1--10), [])) ( \
     let mk i = Task.make (fun ~deadline:_ () -> i, No_shortcut) in \
     let res = run ~j:3 ~deadline:5. CCList.(1 -- 10 |> map mk) in \
-    match res with Res_list l -> Res_list (List.sort Stdlib.compare l) | x->x)
+    match res with Res_list (l,f) -> Res_list (List.sort Stdlib.compare l, f) | x->x)
 *)

@@ -594,27 +594,33 @@ let make_model_pipeline () =
 
 let process_res_ r =
   let module Res = Problem.Res in
-  (* [l] only contains unknown-like results (+timeout+out_of_scope), to
-     recover accurate info: [close_task] grants a shortcut to every
-     conclusive answer, so a task that did not end the race is [Unknown].
-     Enforced here, loudly and by name -- a violation used to reach the
-     user as a bare `Assertion failed`. *)
-  let find_result_if_unknown l =
-    let l =
-      CCList.flat_map
-        (function
-          | Res.Unknown l -> l
-          | r ->
-            Utils.failwithf
-              "@[<2>task reported `%a`@ without ending the race@]" Res.pp_head r)
-        l
-    in
-    Res.Unknown l
+  (* the results that did not end the race are unknown-like (+timeout
+     +out_of_scope), so their reasons can be concatenated: [close_task]
+     grants a shortcut to every conclusive answer.  Enforced here, loudly
+     and by name -- a violation used to reach the user as a bare
+     `Assertion failed`. *)
+  let reasons_of_results l =
+    CCList.flat_map
+      (function
+        | Res.Unknown l -> l
+        | r ->
+          Utils.failwithf
+            "@[<2>task reported `%a`@ without ending the race@]" Res.pp_head r)
+      l
+  in
+  (* a task that raised produced no result at all; it still gets a line in
+     the diagnostics, since a bare `unknown` would hide a broken backend *)
+  let reason_of_failure e =
+    Res.U_backend_error
+      (Res.mk_info ~backend:"?" ~time:(Utils.Time.total ()) (),
+       Printexc.to_string e)
   in
   match r with
     | Scheduling.Res_fail e -> E.fail (Printexc.to_string e)
-    | Scheduling.Res_list [] -> E.fail "no task succeeded"
-    | Scheduling.Res_list l -> E.return (find_result_if_unknown l)
+    | Scheduling.Res_list ([], _) -> E.fail "no task succeeded"
+    | Scheduling.Res_list (l, fails) ->
+      E.return
+        (Res.Unknown (reasons_of_results l @ List.map reason_of_failure fails))
     | Scheduling.Res_one r -> E.return r
 
 (* run the pipeline on this problem, then run tasks, and return the

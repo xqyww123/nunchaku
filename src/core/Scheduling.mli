@@ -115,7 +115,9 @@ end
 
 type 'a run_result =
   | Res_one of 'a
-  | Res_list of 'a list
+  | Res_list of 'a list * exn list
+      (** the results of the tasks that did not end the race, and the
+          exceptions raised by the tasks that produced no result at all *)
   | Res_fail of exn
 
 val run :
@@ -132,10 +134,9 @@ val run :
         iff every other process also returns [Return y] for some [y]}
       {- if [t] returns [Return_shortcut x], then still running processes
         are killed and [Return_shortcut x] is returned by the function}
-      {- if [t] returns [Fail e], then still running processes are killed
-        and [Fail e] is returned}
     }
 
-    If some task [t] raises an exception [e],
-    the whole functions returns [Fail e].
-*)
+    If some task raises an exception, the other tasks keep running: one
+    backend failing must not discard what the others found.  The exception
+    is reported alongside their results in [Res_list], and becomes the
+    result [Res_fail] only if no task produced any result. *)
