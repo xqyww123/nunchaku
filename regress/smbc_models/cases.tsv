@@ -24,7 +24,7 @@ m_defonly2	m_defonly2	headpos	-	recovered
 m_defonly3	m_defonly3	headpos	-	contained
 m_headpos	m_headpos	headpos	-	recovered
 m_matchval	m_matchval	headpos	-	recovered
-m_match_hp_22	m_match_hp_22	headpos	1	recovered
+m_match_hp_22	m_match_hp_22	headpos	1	opaque
 m_match_22	m_match_22	matchp	1	contained
 m_adv_36	m_adv_36	chain	1	opaque
 m_adv_48	m_adv_48	chain	1	opaque

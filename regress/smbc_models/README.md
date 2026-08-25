@@ -83,14 +83,16 @@ learned the hard way:
   and under a match. The general recovery case.
 - **m_matchval** — a function value whose body is a match on its argument.
   Included for the printer, not the parser: see "known reader gap" below.
-- **m_eqn_24**, **m_dist_28**, **m_chain_4000**, **m_match_hp_22** — the
+- **m_eqn_24**, **m_dist_28**, **m_chain_4000** — the
   deep ones. Each nests one construct (`=`, `distinct`, `@`, `match`) and
   each used to cost time exponential in the depth, spent *after* smbc had
   already answered SAT and therefore outside every deadline: 32.6 s at
   `eqn` depth 24, 56.7 s at `dist` depth 28, over 60 s for a linear chain
   of 250 applications. They now finish in hundredths of a second, and the
   deadline column in `cases.tsv` is what pins that. `m_dist_28` needs no
-  unknown at all — it is pure decoding cost.
+  unknown at all — it is pure decoding cost. (`m_match_hp_22` is the fourth
+  deep family; it is listed under "opaque" below, because its innermost
+  node is an applied hole with an untyped argument.)
 - **real_part_app** — captured verbatim from real smbc 0.6.1 on
   `problems/part_app.nun`. Contains a genuine unknown (`?prop_9`) inside a
   lambda body, recovered as `?__<n>`. The corpus needs at least one answer
@@ -102,6 +104,10 @@ learned the hard way:
   Nothing in the model determines either type, so the output keeps the
   opaque `(?__ ?f) (?__ ?g)`. This is the boundary of what any of the
   mechanisms considered can do; it must not be promised away.
+- **m_match_hp_22** — 22 nested matches whose innermost scrutinee is
+  `(?f0 ?l0)`. Every match recovers, the innermost pair stays opaque, and
+  the whole run must fit the deadline. Byte-identical to pristine nunchaku
+  on the opaque part.
 - **m_adv_36**, **m_adv_48** — the same shape at the bottom of a 36- and
   48-deep application chain. The chain is decoded, the hole at the bottom
   stays opaque, and the whole run must still fit the deadline. These are
