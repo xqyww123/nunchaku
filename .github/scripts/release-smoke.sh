@@ -156,8 +156,9 @@ grep -q '^SAT' smoke-smbc.out \
 # pipeline can execute those two binaries at all.  release-attach.sh publishes
 # this file with the binaries, and isabelle-packaging-ci asserts the nunchaku
 # line's version and 40-hex commit fields against the release tag before it
-# packages anything.  Without it, the packaging side's only content check on the
-# two win-64 binaries is that their first two bytes are "MZ".
+# packages anything.  Without it, the packaging side's content check on the two
+# win-64 binaries would be their headers alone -- the PE machine field and the
+# recipe's architecture table -- with nothing binding them to this commit.
 #
 # Redirect to a file and read the file, never `prog | head -1`: this script's
 # other captures do the same, because a program that keeps writing after head
@@ -213,7 +214,9 @@ cat "$PWD/versions-$ISA_PLATFORM.txt"
 # before the artifact round trip rather than after it.  On x86_64-cygwin that
 # is the only end-to-end check on the binary's bytes at all: no job on either
 # side ever executes a Cygwin binary, so the packaging side's content check is
-# otherwise the two bytes `MZ`.
+# otherwise a header check rather than a digest: the packaging side re-verifies
+# this sidecar after downloading, so the digest is what carries the bytes across
+# every hop.
 # Digest the script's own INPUTS, not a pair of bare names in $PWD: on the
 # win-64 leg the binaries are $WS/artifacts/*.exe and the bare names do not
 # exist until a step that runs after this one, so hashing by name would fail

@@ -144,7 +144,9 @@ case "${1-}" in
         # actions/download-artifact.  On x86_64-cygwin this is the only check
         # on the binary's bytes anywhere in the two repositories -- nothing
         # ever executes a Cygwin binary, so the packaging side's own content
-        # check is the two bytes `MZ`.
+        # check on win-64 was once the two bytes `MZ`; it is now this sidecar,
+        # re-verified after the download, plus the PE machine field and the
+        # architecture assertion in the recipe.
         [ -s "$leg/$stem.sha256" ] \
           || die "$plat: $leg/$stem.sha256 is missing -- release-smoke.sh did not digest what it built"
         ( cd "$leg" && sha256_check "$stem.sha256" > /dev/null ) \
