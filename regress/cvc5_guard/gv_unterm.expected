@@ -1,0 +1,5 @@
+UNKNOWN
+(BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} lexer error at file '': line 2, col 50 to line 3, col 0: unterminated string literal)
+--- stderr ---
+rc=0

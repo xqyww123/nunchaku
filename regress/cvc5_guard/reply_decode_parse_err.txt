@@ -1,0 +1,2 @@
+sat
+((b_ false) (x_ (as @a__1 a_)) (y_ (as @a__0 a_)) (f2_ (lambda (($x1 a_) ($x2 a_) ($x3 Bool)) (let ((_let_1 (not $x3))) (let ((_let_2 (= (as @a__0 a_) $x2))) (let ((_let_3 (= (as @a__0 a_) $x1))) (ite (and _let_3 _let_2 $x3) (as @a__0 a_) (ite (and _let_3 (= (as @a__1 a_) $x2) $x3) (as @a__0 a_) (ite (and (= (as @a__1 a_) $x1) _let_2 _let_1) (as @a__0 a_) (ite (and _let_3 _let_2 _let_1) (as @a__0 a_) (as @a__1 a_)))))))))))

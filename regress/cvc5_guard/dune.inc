@@ -362,6 +362,258 @@
   (diff unterm.expected unterm.out)))
 
 (rule
+ (targets gv_unterm.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../support/fake_solver.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  three.nun
+  reply_gv_unterm.txt)
+ (action
+  (with-stdout-to
+   gv_unterm.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_CVC5=%{exe:../support/fake_solver.exe}"
+    --setenv
+    "FAKE_REPLIES=%{dep:reply_gv_unterm.txt}"
+    --
+    --solvers
+    cvc5
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:three.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff gv_unterm.expected gv_unterm.out)))
+
+(rule
+ (targets gv_eof.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../support/fake_solver.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  three.nun
+  reply_gv_eof.txt)
+ (action
+  (with-stdout-to
+   gv_eof.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_CVC5=%{exe:../support/fake_solver.exe}"
+    --setenv
+    "FAKE_REPLIES=%{dep:reply_gv_eof.txt}"
+    --
+    --solvers
+    cvc5
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:three.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff gv_eof.expected gv_eof.out)))
+
+(rule
+ (targets gv_notmodel.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../support/fake_solver.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  three.nun
+  reply_gv_notmodel.txt)
+ (action
+  (with-stdout-to
+   gv_notmodel.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_CVC5=%{exe:../support/fake_solver.exe}"
+    --setenv
+    "FAKE_REPLIES=%{dep:reply_gv_notmodel.txt}"
+    --
+    --solvers
+    cvc5
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:three.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff gv_notmodel.expected gv_notmodel.out)))
+
+(rule
+ (targets gv_esc.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../support/fake_solver.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  three.nun
+  reply_gv_esc.txt)
+ (action
+  (with-stdout-to
+   gv_esc.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_CVC5=%{exe:../support/fake_solver.exe}"
+    --setenv
+    "FAKE_REPLIES=%{dep:reply_gv_esc.txt}"
+    --
+    --solvers
+    cvc5
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:three.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff gv_esc.expected gv_esc.out)))
+
+(rule
+ (targets decode_parse_err.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../support/fake_solver.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  pseudo_prop.nun
+  reply_decode_parse_err.txt)
+ (action
+  (with-stdout-to
+   decode_parse_err.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_CVC5=%{exe:../support/fake_solver.exe}"
+    --setenv
+    "FAKE_REPLIES=%{dep:reply_decode_parse_err.txt}"
+    --
+    --solvers
+    cvc5
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:pseudo_prop.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff decode_parse_err.expected decode_parse_err.out)))
+
+(rule
+ (targets decode_undefined_id.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../support/fake_solver.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  data_select.nun
+  reply_decode_undefined_id.txt)
+ (action
+  (with-stdout-to
+   decode_undefined_id.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_CVC5=%{exe:../support/fake_solver.exe}"
+    --setenv
+    "FAKE_REPLIES=%{dep:reply_decode_undefined_id.txt}"
+    --
+    --solvers
+    cvc5
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:data_select.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff decode_undefined_id.expected decode_undefined_id.out)))
+
+(rule
+ (targets decode_bad_dt.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../support/fake_solver.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  nat_le.nun
+  reply_decode_bad_dt.txt)
+ (action
+  (with-stdout-to
+   decode_bad_dt.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_CVC5=%{exe:../support/fake_solver.exe}"
+    --setenv
+    "FAKE_REPLIES=%{dep:reply_decode_bad_dt.txt}"
+    --
+    --solvers
+    cvc5
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:nat_le.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff decode_bad_dt.expected decode_bad_dt.out)))
+
+(rule
  (targets empty_cvc5.out)
  (deps
   %{exe:../support/run_case.exe}

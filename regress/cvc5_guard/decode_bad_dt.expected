@@ -1,0 +1,8 @@
+UNKNOWN
+(BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} Invalid_argument("DT.of_flat: case tests an unbound variable"))
+--- stderr ---
+[Warning error when parsing model:
+  could not decode cvc5's reply:
+    Invalid_argument("DT.of_flat: case tests an unbound variable")]
+rc=0

@@ -32,8 +32,17 @@ let cases =
       (* 2-8: a malformed domain reply, one named cause each *)
       "bare"; "wrongty"; "atom"; "error"; "empty"; "dup"; "collide";
       (* the lexer's two error positions, in the domain reply *)
-      "escape"; "unterm" ]
-  @ [ (* 9: an empty variable for a solver that was requested *)
+      "escape"; "unterm";
+      (* the same shapes in the get-value reply, which is decoded by a
+         different function and used to abort the whole run *)
+      "gv_unterm"; "gv_eof"; "gv_notmodel"; "gv_esc" ]
+  @ [ (* latent decoder bugs that a stale cvc5 reaches once the domain guard
+         stops the run from shortcutting on a fabricated model: they must be
+         reported, not thrown.  Replies recorded verbatim from cvc5 1.2.0. *)
+      { (cvc5 "decode_parse_err") with problem = "pseudo_prop.nun" };
+      { (cvc5 "decode_undefined_id") with problem = "data_select.nun" };
+      { (cvc5 "decode_bad_dt") with problem = "nat_le.nun" };
+      (* 9: an empty variable for a solver that was requested *)
       { name = "empty_cvc5"; problem = "three.nun"; reply = None;
         solvers = "cvc5"; env = [ ("NUNCHAKU_CVC5", "") ] };
       (* 10: the same variable, for a solver that was not requested *)

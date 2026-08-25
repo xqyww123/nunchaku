@@ -18,10 +18,13 @@ type model_ty = FO.Ty.t
 
 module DSexp = Sexp_lib.Decoder
 
-(* [Error] is for nunchaku's own broken invariants; anything the solver sends
-   that we cannot understand is [Backend_err].  [read_res_] turns the latter
-   into [Res.Unknown [U_backend_error]], so one unusable reply costs this arm
-   and nothing else. *)
+(* [Error] is for nunchaku's own broken invariants -- those that cannot depend
+   on what the solver said, i.e. everything up to and including printing the
+   problem.  Anything the solver sends that we cannot understand is
+   [Backend_err]: every failure of the decoder, from [find_atom_] down, is one.
+   [read_res_] turns [Backend_err] into [Res.Unknown [U_backend_error]] and
+   catches anything else the decoder throws, so one unusable reply costs this
+   arm and nothing else. *)
 exception Error of string
 exception Backend_err of string
 
@@ -368,6 +371,14 @@ let send_ s problem =
   Format.pp_print_flush s.fmt ();
   ()
 
+(* {2 Decoding cvc5's replies}
+
+   Everything from here to [get_model_] reads what cvc5 sent, which is
+   untrusted input: it may come from a version that does not implement the
+   command, or that answers in a shape we have never seen.  So a failure here
+   is never [Error]/fatal -- it is [Backend_err], reported by [read_res_] as
+   [U_backend_error] with the other arms left running. *)
+
 let find_atom_ ~decode s =
   try Hashtbl.find decode.name_to_id s
   with Not_found ->
@@ -388,13 +399,13 @@ let parse_atom_ ~decode = function
             let n = int_of_string n in
             De_bruijn (n, ty)
           with Not_found -> find_atom_ ~decode s))
-  | _ -> error_ "expected ID, got a list"
+  | _ -> cvc5_error_ "expected ID, got a list"
 
 let parse_id_ ~decode s =
   match parse_atom_ ~decode s with
   | ID id -> id
   | De_bruijn _ | DataTest _ | DataSelect _ ->
-      error_ "expected ID, got data test/select/de bruijn"
+      cvc5_error_ "expected ID, got data test/select/de bruijn"
 
 (* parse an atomic type *)
 let rec parse_ty_ ~decode = function
@@ -406,18 +417,18 @@ let rec parse_ty_ ~decode = function
       let id = parse_id_ ~decode f in
       let l = List.map (parse_ty_ ~decode) l in
       Ty.app id l
-  | _ -> error_ "invalid type"
+  | _ -> cvc5_error_ "invalid type"
 
 let parse_var_ ~decode = function
   | `List [ (`Atom _ as v); ty ] ->
       let id = parse_id_ ~decode v in
       let ty = parse_ty_ ~decode ty in
       Var.of_id ~ty id
-  | _ -> error_ "expected typed variable"
+  | _ -> cvc5_error_ "expected typed variable"
 
 let parse_int_ = function
-  | `Atom n -> ( try int_of_string n with _ -> error_ "expected int")
-  | `List _ -> error_ "expected int"
+  | `Atom n -> ( try int_of_string n with _ -> cvc5_error_ "expected int")
+  | `List _ -> cvc5_error_ "expected int"
 
 (* parse a ground term *)
 let rec parse_term_ ~decode s =
@@ -448,7 +459,7 @@ and parse_term_sub_ ~decode = function
                a binder, so its stack slot should not count *)
               let n = n + 1 in
               match CCList.get_at_idx n decode.db_stack with
-              | None -> errorf_ "De Bruijn index %d not bound" n
+              | None -> backend_errorf_ "De Bruijn index %d not bound" n
               | Some r -> (
                   match !r with
                   | Some v -> T.var v (* use same variable *)
@@ -458,7 +469,7 @@ and parse_term_sub_ ~decode = function
                       r := Some v;
                       T.var v))
           | DataTest _ | DataSelect _ ->
-              error_ "expected ID, got data test/select"))
+              cvc5_error_ "expected ID, got data test/select"))
   | `List [ `Atom ("LAMBDA" | "lambda"); `List bindings; body ] ->
       (* lambda term *)
       let bindings = List.map (parse_var_ ~decode) bindings in
@@ -502,25 +513,25 @@ and parse_term_sub_ ~decode = function
       within_let_scope ~decode bindings (fun () -> parse_term_ ~decode body)
   | `List ((`Atom s as f) :: l) as sexp -> (
       match Hashtbl.find_opt decode.let_vars s with
-      | Some _ -> errorf_ "Application of let variable %a" Sexp_lib.pp sexp
+      | Some _ -> backend_errorf_ "Application of let variable %a" Sexp_lib.pp sexp
       | None -> (
           match (parse_atom_ ~decode f, l) with
           | ID f, _ ->
               (* regular function app *)
               let l = List.map (parse_term_ ~decode) l in
               T.app f l
-          | De_bruijn _, _ -> error_ "invalid arity for De Bruijn index"
+          | De_bruijn _, _ -> cvc5_error_ "invalid arity for De Bruijn index"
           | DataTest c, [ t ] ->
               let t = parse_term_ ~decode t in
               T.data_test c t
-          | DataTest _, _ -> error_ "invalid arity for DataTest"
+          | DataTest _, _ -> cvc5_error_ "invalid arity for DataTest"
           | DataSelect (c, n), [ t ] ->
               let t = parse_term_ ~decode t in
               T.data_select c n t
-          | DataSelect _, _ -> error_ "invalid arity for DataSelect"))
+          | DataSelect _, _ -> cvc5_error_ "invalid arity for DataSelect"))
   | `List (`List _ :: _) as s ->
-      errorf_ "non first-order list@ %a" Sexp_lib.pp s
-  | `List [] -> error_ "expected term, got empty list"
+      backend_errorf_ "non first-order list@ %a" Sexp_lib.pp s
+  | `List [] -> cvc5_error_ "expected term, got empty list"
 
 and within_scope ~decode bindings f =
   List.iter (fun v -> ID.Tbl.add decode.vars (Var.id v) v) bindings;
@@ -530,7 +541,7 @@ and within_scope ~decode bindings f =
 and parse_let_binding ~decode = function
   | `List [ `Atom id; value ] -> (id, parse_term_ ~decode value)
   | s ->
-      errorf_ "invalid let variable declaration declaration@ %a" Sexp_lib.pp s
+      backend_errorf_ "invalid let variable declaration declaration@ %a" Sexp_lib.pp s
 
 and within_let_scope ~decode bindings f =
   List.iter (fun (var, value) -> Hashtbl.add decode.let_vars var value) bindings;
@@ -547,7 +558,7 @@ let parse_fun_ ~decode ~arity:n ~env term =
       | FO.Fun (v, t') ->
           let vars, body = get_args t' (n - 1) in
           (v :: vars, body)
-      | _ -> errorf_ "expected %d-ary function,@ got `@[%a@]`" n FO.pp_term t
+      | _ -> backend_errorf_ "expected %d-ary function,@ got `@[%a@]`" n FO.pp_term t
   in
   (* parse term, then convert into [vars -> decision-tree] *)
   let t = parse_term_ ~decode term in
@@ -563,12 +574,6 @@ let parse_fun_ ~decode ~arity:n ~env term =
     (fun k -> k FO.pp_term body (Model.DT.pp FO.pp_term' FO.pp_ty) dt);
   dt
 
-let sym_get_const_ ~decode id =
-  match ID.Tbl.find decode.symbols id with
-  | Q_const -> `Const
-  | Q_fun n -> `Fun n
-  | Q_type _ -> assert false
-
 let sym_get_ty_ ~decode id =
   match ID.Tbl.find decode.symbols id with
   | Q_const | Q_fun _ -> assert false
@@ -580,7 +585,7 @@ let get_kind ~decode id =
 
 (* state: decode_state *)
 let parse_simple_model_ ~decode ~env : Sexp_lib.t -> (_, _) Model.t = function
-  | `Atom _ -> error_ "expected model, got atom"
+  | `Atom _ -> cvc5_error_ "expected model, got atom"
   | `List assoc ->
       (* parse model *)
       let m =
@@ -588,15 +593,30 @@ let parse_simple_model_ ~decode ~env : Sexp_lib.t -> (_, _) Model.t = function
           (fun m -> function
             | `List [ (`Atom _ as s); term ] -> (
                 let id = parse_id_ ~decode s in
-                let kind = get_kind ~decode id in
-                match sym_get_const_ ~decode id with
-                | `Const ->
+                (* the reply names the symbol, so neither its kind nor the
+                   query it answers can be assumed to exist *)
+                let kind =
+                  try ID.Map.find id decode.kinds
+                  with Not_found ->
+                    backend_errorf_ "cvc5 gave a value for `%a`, which is not a symbol of the problem"
+                      ID.pp id
+                in
+                match ID.Tbl.find_opt decode.symbols id with
+                | Some Q_const ->
                     let t = parse_term_ ~decode term in
                     Model.add_const m (T.const id, t, kind)
-                | `Fun n ->
+                | Some (Q_fun n) ->
                     let dt = parse_fun_ ~decode ~arity:n ~env term in
-                    Model.add_value m (T.const id, dt, kind))
-            | _ -> error_ "expected pair key/value in the model")
+                    Model.add_value m (T.const id, dt, kind)
+                | Some (Q_type _) ->
+                    backend_errorf_ "cvc5 gave a value for `%a`, which is a type witness"
+                      ID.pp id
+                | None ->
+                    backend_errorf_ "cvc5 gave a value for `%a`, which we did not ask about"
+                      ID.pp id)
+            | s ->
+                backend_errorf_ "expected a key/value pair in the model, got `%a`"
+                  Sexp_lib.pp s)
           Model.empty assoc
       in
       m
@@ -687,8 +707,8 @@ let get_model_ ~print_model ~decode ~env s : (_, _) Model.t =
   (* read result back *)
   let simple_model =
     match DSexp.next s.sexp with
-    | `Error e -> error_ e
-    | `End -> error_ "unexpected end of input from cvc5: expected model"
+    | `Error e -> cvc5_error_ e
+    | `End -> cvc5_error_ "unexpected end of input from cvc5: expected model"
     | `Ok sexp ->
         if print_model then
           Format.eprintf "@[raw model:@ @[<hv>%a@]@]@." Sexp_lib.pp sexp;
@@ -709,7 +729,7 @@ let get_model_ ~print_model ~decode ~env s : (_, _) Model.t =
     List.length m.Model.values + List.length m.Model.finite_types
     = ID.Tbl.length decode.symbols
   in
-  if not ok then error_ "some symbols are not defined in the model";
+  if not ok then cvc5_error_ "some symbols are not defined in the model";
   m
 
 (* read the result *)
@@ -745,8 +765,19 @@ let read_res_ ~info ~print_model ~decode ~env s =
     | `End ->
         Utils.debug ~section 5 "no answer from cvc5, assume it timeouted";
         Res.Unknown [ Res.U_timeout (Lazy.force info) ]
-  with Backend_err msg ->
-    Res.Unknown [ Res.U_backend_error (Lazy.force info, msg) ]
+  with
+  | Backend_err msg -> Res.Unknown [ Res.U_backend_error (Lazy.force info, msg) ]
+  | (Sys.Break | Out_of_memory) as e -> raise e
+  | e ->
+      (* Reaching here means the decoder failed without naming a cause -- a gap
+         in it, not a verdict.  A reply is untrusted input either way, so it is
+         reported like any other unusable one and the warning says which
+         exception it was; aborting the run over it would cost the sibling
+         backends their answers for a defect of ours. *)
+      let msg = Printexc.to_string e in
+      Utils.warningf Utils.Warn_model_parsing_error
+        "@[<2>could not decode cvc5's reply:@ %s@]" msg;
+      Res.Unknown [ Res.U_backend_error (Lazy.force info, msg) ]
 
 (* the set of options given to every instance of cvc5 *)
 let basic_options =

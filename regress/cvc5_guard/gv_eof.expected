@@ -1,0 +1,5 @@
+UNKNOWN
+(BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} unexpected end of input from cvc5: expected model)
+--- stderr ---
+rc=0

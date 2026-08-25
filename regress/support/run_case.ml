@@ -93,6 +93,34 @@ let collapse_repeated_entries s =
         ^ String.sub s last (String.length s - last)
     | _ -> s)
 
+(* Same problem on the other stream: one warning per option arm, identical
+   after normalisation.  A warning block is a line starting at column 0 with
+   "[" plus its indented continuation lines. *)
+let re_warning = Str.regexp "\n\\[" (* start of a block; keep the newline *)
+
+let collapse_repeated_warnings s =
+  let sep = "--- stderr ---\n" in
+  match
+    ( Str.search_forward (Str.regexp_string sep) s 0,
+      (* the report's last line is rc=…; the warnings are everything before it *)
+      Str.search_backward (Str.regexp_string "\nrc=") s (String.length s) )
+  with
+  | exception Not_found -> s
+  | cut, stop when stop > cut + String.length sep ->
+    let start = cut + String.length sep in
+    let region = String.sub s start (stop + 1 - start) in
+    (* each block ends with its own newline, so mark after it, not on it *)
+    let blocks =
+      Str.split_delim (Str.regexp "\000")
+        (Str.global_replace re_warning "\n\000[" region)
+    in
+    let kept = dedup blocks in
+    if List.length kept = List.length blocks then s
+    else
+      String.sub s 0 start ^ String.concat "" kept
+      ^ String.sub s (stop + 1) (String.length s - stop - 1)
+  | _ -> s
+
 let normalise s =
   let s = canonicalise re_unknown "?__%d" s in
   let s = canonicalise re_var "v%d" s in
@@ -100,7 +128,7 @@ let normalise s =
      of the answer; pinning them makes every unrelated edit a golden churn *)
   let s = Str.global_replace re_time "time:Ns" s in
   let s = Str.global_replace re_options "message=\"options: OPTIONS\"" s in
-  collapse_repeated_entries s
+  collapse_repeated_warnings (collapse_repeated_entries s)
 
 (** {2 Running the child} *)
 

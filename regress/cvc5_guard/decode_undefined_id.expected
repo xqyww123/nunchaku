@@ -1,0 +1,7 @@
+UNKNOWN
+(BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} Nunchaku_core.FO.Env.UndefinedID(_))
+--- stderr ---
+[Warning error when parsing model:
+  could not decode cvc5's reply: Nunchaku_core.FO.Env.UndefinedID(_)]
+rc=0

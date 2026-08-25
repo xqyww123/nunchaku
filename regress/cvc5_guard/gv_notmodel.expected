@@ -1,0 +1,5 @@
+UNKNOWN
+(BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} expected a key/value pair in the model, got `this`)
+--- stderr ---
+rc=0

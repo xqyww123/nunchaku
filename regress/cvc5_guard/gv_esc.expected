@@ -1,0 +1,5 @@
+UNKNOWN
+(BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} lexer error at file '': line 2, col 53 to 54: illegal character 0x1b in string literal)
+--- stderr ---
+rc=0

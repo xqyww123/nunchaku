@@ -266,7 +266,12 @@ module DT = struct
               | Some d -> yield d
             end
           | ([], rhs) :: _ -> yield rhs (* TODO: warning if several cases? *)
-          | (_::_, _) :: _ -> assert false
+          | (_::_, _) :: _ ->
+            (* reachable from a backend's reply: a decision tree whose cases
+               test more variables than [fdt_vars] declares.  Named like its
+               sibling above, so a backend can report it instead of dying on an
+               assertion with no cause *)
+            invalid_arg "DT.of_flat: case tests an unbound variable"
         end
       | v :: vars' ->
         (* partition [tests] around their value for [var] *)
