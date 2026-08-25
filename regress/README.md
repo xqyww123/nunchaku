@@ -23,6 +23,7 @@ Shipping configuration (what all of this certifies): `solvers = "cvc5 smbc"`,
 | `baseline/` | checked-in reference TSVs and summaries |
 | `bash_server_main.scala` | helper needed by both engines (below) |
 | `tools/` | diagnostics that need no certification run: capture the problems Isabelle emits, and dump the metadata that drives the spurious-model marking (§6) |
+| `cvc5_guard/` | hermetic guard suite for the cvc5 backend, run by `dune runtest`: canned replies pinning that a malformed or stale-solver answer is reported as a backend error and never fabricates a model or aborts the run |
 | `soundness_guard/` | hermetic negative controls for the spurious-model policy, run by `dune runtest` (they use the shared `support/` driver) |
 | `smbc_models/` | hermetic golden-file suite for the smbc model parser, run by `dune runtest` (same shared `support/` driver): 24 canned smbc answers, one `.expected` report each, and a wall-clock ceiling on the deeply nested ones so a decoding regression names itself as a timing failure.  The case table is `smbc_models/cases.tsv`; every case is explained in `smbc_models/README.md` |
 
