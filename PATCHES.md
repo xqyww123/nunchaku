@@ -888,7 +888,7 @@ and the scheduler component that runs them is the *pool*.
   requests all four of `cvc5 kodkod paradox smbc`, so one empty value would
   fail every call.
 
-## 21. Match branches print in declaration order, on every OCaml (commit: `pending`)
+## 21. Match branches print in declaration order, on every OCaml (commit: `300975c`)
 
 - **Motivation**: the branches of a `match` in a printed model came out in the
   reverse of the order the constructors were declared in — a two-constructor
