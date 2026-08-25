@@ -1,0 +1,4 @@
+UNKNOWN
+(POTENTIALLY_SPURIOUS {backend:smbc, time:Ns} model suppressed; re-run with --allow-spurious-models to see it)
+--- stderr ---
+rc=0

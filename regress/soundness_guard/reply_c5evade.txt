@@ -1,0 +1,4 @@
+(result SAT
+   :model ((type t_ ($t__0))
+           (val Rep_ (lambda  ((x0 t_)) (Suc_ zero_)))
+           (val Abs_ (lambda  ((x1 nat_)) $t__0))))

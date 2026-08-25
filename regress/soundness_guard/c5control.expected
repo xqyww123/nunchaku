@@ -1,0 +1,4 @@
+UNSAT
+{backend:smbc, time:Ns}
+--- stderr ---
+rc=0

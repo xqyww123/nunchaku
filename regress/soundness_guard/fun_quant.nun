@@ -1,0 +1,7 @@
+# Every type here is finite, so kodkod's universe has a deduced maximum
+# cardinality and its bound-increment loop accepts the first "unsat".  The
+# positive quantifier over the function type is approximated away by
+# Elim_HOF, which sets unsat_means_unknown: this "unsat" says nothing.
+data d_ := A_ | B_.
+
+goal forall (f_ : d_ -> d_). f_ A_ = f_ B_.

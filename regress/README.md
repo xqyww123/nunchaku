@@ -23,6 +23,7 @@ Shipping configuration (what all of this certifies): `solvers = "cvc5 smbc"`,
 | `baseline/` | checked-in reference TSVs and summaries |
 | `bash_server_main.scala` | helper needed by both engines (below) |
 | `tools/` | diagnostics that need no certification run: capture the problems Isabelle emits, and dump the metadata that drives the spurious-model marking (§6) |
+| `soundness_guard/` | hermetic negative controls for the spurious-model policy, run by `dune runtest` (they use the shared `support/` driver) |
 
 Data format: each benchmark line is
 `RESULT\tclass\tid\ttruth\tengine\ttier\tverdict\tms\tmodel`, ending with

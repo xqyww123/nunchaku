@@ -1,0 +1,130 @@
+; Hermetic negative controls for the spurious-model policy.
+;
+; Each case replays a canned solver reply through the fake solver, so what is
+; pinned is what nunchaku does with an answer it must not believe -- which no
+; run against a correct solver can exercise, because the encoding, not the
+; solver, is what makes the answer untrustworthy.
+;
+; kodkod_unsat is the one arm of the policy with no natural witness anywhere
+; in the suite: Kodkod.ml never reads the problem metadata, so before the
+; policy moved into one pipeline stage its "unsat" was reported as a
+; refutation even when the encoding had lost models.  fun_quant.nun is built
+; for it: every type is finite, so kodkod's universe has a deduced maximum
+; cardinality and its bound-increment loop accepts the first "unsat" instead
+; of retrying with a bigger bound (which would report INCOMPLETE by itself
+; and prove nothing).  Expected: UNKNOWN (INCOMPLETE ...), rc=0.
+;
+; c5evade and its positive control c5control are the sealed record of a
+; rejected proposal: narrowing the marking to problems that mention
+; [abstract] would let c5evade through, and it would then print a model of a
+; statement that has none (c5control, the same statement without the copy
+; type, is refuted).  Expected: UNKNOWN (POTENTIALLY_SPURIOUS ...) and UNSAT.
+; Any change that turns the first into SAT is a soundness regression.
+
+(rule
+ (targets kodkod_unsat.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../support/fake_solver.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  fun_quant.nun
+  reply_kodkod_unsat.txt)
+ (action
+  (with-stdout-to
+   kodkod_unsat.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_KODKODI=%{exe:../support/fake_solver.exe}"
+    --setenv
+    "FAKE_REPLIES=%{dep:reply_kodkod_unsat.txt}"
+    --
+    --solvers
+    kodkod
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:fun_quant.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff kodkod_unsat.expected kodkod_unsat.out)))
+
+(rule
+ (targets c5evade.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../support/fake_solver.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  c5evade.nun
+  reply_c5evade.txt)
+ (action
+  (with-stdout-to
+   c5evade.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_SMBC=%{exe:../support/fake_solver.exe}"
+    --setenv
+    "FAKE_REPLIES=%{dep:reply_c5evade.txt}"
+    --
+    --solvers
+    smbc
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:c5evade.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff c5evade.expected c5evade.out)))
+
+(rule
+ (targets c5control.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../support/fake_solver.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  c5control.nun
+  reply_c5control.txt)
+ (action
+  (with-stdout-to
+   c5control.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_SMBC=%{exe:../support/fake_solver.exe}"
+    --setenv
+    "FAKE_REPLIES=%{dep:reply_c5control.txt}"
+    --
+    --solvers
+    smbc
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:c5control.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff c5control.expected c5control.out)))

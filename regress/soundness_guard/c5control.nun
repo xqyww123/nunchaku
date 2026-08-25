@@ -1,0 +1,7 @@
+# POSITIVE CONTROL: same statement without the copy type. Correct answer: UNSAT.
+data nat_ := zero_ | Suc_ nat_.
+rec f_ : nat_ -> prop :=
+  forall (x_ : nat_). f_ x_ = (x_ = zero_).
+rec g_ : nat_ -> prop :=
+  forall (x_ : nat_). g_ x_ = false.
+goal f_ = g_.

@@ -1,0 +1,19 @@
+# t_ is an isomorphic copy of nat_ (subset with a trivially-true predicate).
+# Abs_ NEVER occurs outside ElimCopy's own axioms, so C5 un-marks this problem.
+# In reality t_ is infinite, so some x has Rep_ x = zero_ and f_ <> g_: UNSAT.
+data nat_ := zero_ | Suc_ nat_.
+
+rec tru_ : nat_ -> prop :=
+  forall (n_ : nat_). tru_ n_ = true.
+
+copy t_ := nat_
+  subset tru_
+  abstract Abs_
+  concrete Rep_.
+
+rec f_ : t_ -> prop :=
+  forall (x_ : t_). f_ x_ = (Rep_ x_ = zero_).
+rec g_ : t_ -> prop :=
+  forall (x_ : t_). g_ x_ = false.
+
+goal f_ = g_.
