@@ -81,14 +81,20 @@ asset_names () {  # <isabelle-platform>
     "versions-$plat.txt"
 }
 
-if [ "${1-}" = --list ]; then
-  asset_names "${2:?--list needs an Isabelle platform id}"
-  exit 0
-fi
-
 SRC_ROOT=${SRC_ROOT:-$PWD}
 # shellcheck source=.github/scripts/solver-pins.sh
 . "$SRC_ROOT/.github/scripts/solver-pins.sh"
+
+if [ "${1-}" = --list ]; then
+  want=${2:?--list needs an Isabelle platform id}
+  # Validated against the pins table: an operator following section 9 step 1
+  # types this by hand, and an unknown platform would otherwise print a
+  # plausible five-line contract for a platform the release does not have.
+  pin_platforms | grep -Fqx "$want" \
+    || die "unknown platform '$want'; component/solvers.pins names: $(pin_platforms | tr '\n' ' ')"
+  asset_names "$want"
+  exit 0
+fi
 
 # The staging directory `collect` fills and `publish` uploads.  Both derive it
 # the same way, so the two subcommands cannot disagree about where the assets
@@ -163,7 +169,10 @@ case "${1-}" in
     echo "the contract names $(wc -l < contract.txt) files, and all of them were assembled:"
     ( cd "$OUT" && ls -l )
     echo "=== version records ==="
-    cat "$OUT"/versions-*.txt
+    for f in "$OUT"/versions-*.txt; do
+      echo "-- ${f##*/}"
+      cat "$f"
+    done
     ;;
 
   publish)
@@ -187,9 +196,9 @@ case "${1-}" in
     # against github.com (`gh api repos/xqyww123/nunchaku/releases`): each
     # element carries .id, .tag_name, .draft and .assets[].name.
     export TAG=$GITHUB_REF_NAME
-    release_ids () {
+    release_ids () {   # "<id> <draft>" per release carrying the tag
       gh api --paginate "repos/$GITHUB_REPOSITORY/releases" \
-        --jq '.[] | select(.tag_name == env.TAG) | .id'
+        --jq '.[] | select(.tag_name == env.TAG) | "\(.id) \(.draft)"'
     }
     count_ids () {  # <newline-separated ids>  -- 0 for the empty string
       [ -n "$1" ] || { echo 0; return 0; }
@@ -211,8 +220,20 @@ case "${1-}" in
     n=$(count_ids "$ids")
     [ "$n" -eq 1 ] || die "expected exactly one release for $TAG, found $n:
 $ids"
-    id=$ids
-    echo "release id for $TAG: $id"
+    id=${ids%% *}
+    draft=${ids##* }
+    echo "release id for $TAG: $id (draft: $draft)"
+
+    # REFUSE, rather than re-upload, once the release is out of draft.  A tag
+    # run that is re-run wholesale rebuilds binaries that are not
+    # reproducible, so uploading them over a published release would leave the
+    # conda channel's immutable packages certified by bytes the release no
+    # longer serves -- with every gate green, because nothing downstream
+    # compares the two.  Recovery for a published release is a new patch
+    # version, not a second pass over this one (RELEASE_CHECKLIST.md section 9
+    # step 3).
+    [ "$draft" = true ] \
+      || die "the release for $TAG is already published; a re-run would replace its assets with freshly built, differing binaries -- fix forward with a new patch version instead (RELEASE_CHECKLIST.md section 9 step 3)"
 
     # --clobber is KEPT, deliberately.  The recovery path RELEASE_CHECKLIST.md
     # prescribes for a red job is "re-run failed jobs", and a re-run reuses the

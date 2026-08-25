@@ -10,12 +10,17 @@ on:
     branches:
       - main
   # Manual dispatch, so the release path can be REHEARSED on the fixed tree
-  # before a tag exists.  Without it the five release legs first execute on the
-  # tag push itself, which is the worst possible moment to discover that one of
-  # them never worked; and a throwaway tag is not a substitute, because the
-  # packaging recipe asserts the fork's VERSION file against the dispatched
-  # version.  RELEASE_CHECKLIST.md section 9 in isabelle-packaging-ci makes this
-  # dispatch step 1 of the release run plan.
+  # before a tag exists: the five build legs, their smokes, and the whole
+  # twenty-five-asset contract check in release-assets' collect step, which is
+  # deliberately not tag-gated.
+  #
+  # What a dispatch CANNOT reach is `release-attach.sh publish`: it asserts
+  # that the tag equals the VERSION file before its first gh call, so a
+  # throwaway pre-release tag dies there having done nothing.  Its first
+  # execution is therefore the real tag push.  That is a stated limit, not an
+  # oversight -- RELEASE_CHECKLIST.md section 9 step 1 in isabelle-packaging-ci
+  # lists exactly which gh calls it covers and which it does not, and step 3
+  # says what to do when one of them fails.
   workflow_dispatch:
 
 concurrency:
@@ -32,6 +37,13 @@ concurrency:
   # which shares this group with any push to main and was being cancelled by
   # one) or must never be interrupted at all (a tag push).
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# The default for every job: only release-assets widens it, and its own
+# `permissions:` block says why.  Without this the repository default applies,
+# which on a public repository is read but on a private one can be write --
+# `run` and `benchmark` have no business holding either.
+permissions:
+  contents: read
 
 jobs:
   run:
@@ -218,6 +230,10 @@ jobs:
             smbc-bin
             smbc-bin.sha256
             versions-${{ matrix.target.isa_platform }}.txt
+          # A leg that produced no files must fail HERE.  Left at the default
+          # `warn` the leg goes green, and the absence surfaces in collect
+          # after every other leg has run -- up to 300 minutes later.
+          if-no-files-found: error
           retention-days: 90
           # Artifacts are scoped to the RUN, and "Re-run all jobs" reuses the
           # run -- without this, the legs that had passed fail at this step on
@@ -531,6 +547,9 @@ jobs:
             smbc-bin
             smbc-bin.sha256
             versions-${{ env.ISA_PLATFORM }}.txt
+          # See the unix leg: a leg that uploaded nothing fails here, not in
+          # collect.
+          if-no-files-found: error
           retention-days: 90
           overwrite: true   # see the unix leg's upload
 
