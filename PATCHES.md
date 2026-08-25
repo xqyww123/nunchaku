@@ -9,11 +9,7 @@ reproduction, and the fork commit that carries it.  Base commit: d23a876.
 Reading the file: the entries are in landing order, so a later one can supersede
 an earlier one; where that happened the earlier entry ends with a
 "Superseded in part by §N" note, and §N is the entry that describes the current
-shape of that change.  `(commit: TBD)` marks an entry whose work is written and
-reviewed but which has not been cherry-picked onto the fork's `main` yet, so its
-hash is not final; the hashes are filled in as the entries land, and until an
-entry lands the fork's `main` still behaves as the entry it supersedes
-describes.  A hash therefore means "on `main`" — not "in the shipped component",
+shape of that change.  A hash means "on `main`" — not "in the shipped component",
 which is built and certified separately.  The *component* is the bundle
 Isabelle installs: a wrapper script that sets the solver environment variables
 and execs the binary, plus the solvers it pins.  The project also publishes the
@@ -335,7 +331,7 @@ and the scheduler component that runs them is the *pool*.
   with the pristine base binary is in flight, to attribute an observed
   slowdown in the smbc arm.
 
-## 8. Strict parsing of cvc5's finite-domain reply (commit: TBD)
+## 8. Strict parsing of cvc5's finite-domain reply (commits: `e275391`, `ede776c`, `59a1c0b`)
 
 - **Motivation**: `get_finite_domain_` read the answer to
   `get-model-domain-elements` as "however many elements this list has",
@@ -426,7 +422,7 @@ and the scheduler component that runs them is the *pool*.
   test that is implemented is `decode.id_to_name`, which is exactly "a
   name we declared to cvc5".
 
-## 9. String literals scanned by a lexer sub-rule (commit: TBD)
+## 9. String literals scanned by a lexer sub-rule (commit: `de00b50`)
 
 - **Motivation**: `Sexp_lex` matched a string literal as one regexp
   lexeme and counted its newlines afterwards, so no error could name a
@@ -462,7 +458,7 @@ and the scheduler component that runs them is the *pool*.
   a get-value string is `SAT` with the byte in the model on `main`, and was
   an abort here.
 
-## 10. Unquoting a backend's error message for display (commit: TBD)
+## 10. Unquoting a backend's error message for display (commit: `2f91d32`)
 
 - **Motivation**: a string literal reaches the model layer as its raw
   lexeme — delimiters kept and inner quotes still doubled — so cvc5
@@ -486,7 +482,7 @@ and the scheduler component that runs them is the *pool*.
   `` `List (`Atom "error" :: _) `` match depends on.  Nobody should
   revive it.
 
-## 11. Which binary a backend chose, and the unavailable-solver warning (commit: TBD)
+## 11. Which binary a backend chose, and the unavailable-solver warning (commit: `aebaea7`)
 
 - **Motivation**: with `NUNCHAKU_*` overriding a PATH lookup there was
   no way to ask from the outside which binary a run actually used; and
@@ -516,7 +512,7 @@ and the scheduler component that runs them is the *pool*.
   `[Warning solver not available: cvc5, paradox]` where it used to be an
   unframed stderr line with no toggle.
 
-## 12. An empty `NUNCHAKU_*` variable is an error (commit: TBD)
+## 12. An empty `NUNCHAKU_*` variable is an error (commit: `0d918db`)
 
 - **Motivation**: `NUNCHAKU_CVC5=""` was read as "not set" and fell
   back to whatever `cvc5` the PATH offers — the silent-degradation
@@ -547,7 +543,7 @@ and the scheduler component that runs them is the *pool*.
   it means `component/x86_64-linux/nunchaku` must never export an empty
   value — today it exports one unconditional absolute path.
 
-## 13. A solver reply is never fatal, for the whole decoder (commit: TBD)
+## 13. A solver reply is never fatal, for the whole decoder (commit: `59a1c0b`)
 
 - **Motivation**: §8 stated the rule — nunchaku's own broken
   invariants are `Error`, anything the solver sends that we cannot
@@ -599,7 +595,7 @@ and the scheduler component that runs them is the *pool*.
   case above it — `DT.of_flat: case tests an unbound variable` — and a
   backend can report a cause instead of a file and a line number.
 
-## 14. Negative controls for the spurious-model policy (commit: TBD)
+## 14. Negative controls for the spurious-model policy (commit: `83919f6`)
 
 - **Motivation**: one arm of §7's policy has no natural witness anywhere in
   the benchmark, so nothing would notice if it stopped working.  `Kodkod.ml`
@@ -650,7 +646,7 @@ and the scheduler component that runs them is the *pool*.
   smbc 0.6.1) and name only symbols of the source problem, so they do not
   churn when ids shift downstream.
 
-## 15. Typed-unknown environment for smbc models; every node converted once (commit: TBD)
+## 15. Typed-unknown environment for smbc models; every node converted once (commits: `ea405c1`, `3f2b144`, `3866011`)
 
 - **Motivation**: §4's follow-up recovered types by converting a term,
   reading the type off the result, and converting it a second time with an
@@ -720,7 +716,7 @@ and the scheduler component that runs them is the *pool*.
   a collapsed exception costs a recovery and never a verdict.  Noted in the
   source next to `set_term_type`.
 
-## 16. The smbc model parser treats its input as untrusted (commit: TBD)
+## 16. The smbc model parser treats its input as untrusted (commits: `00a3e4c`, `3a8bb2a`, `1170f68`, `f14f0fb`)
 
 - **Motivation**: the model comes from a separate program, and the parser
   asserted on it in several places and aborted the whole run on it in two
@@ -766,7 +762,7 @@ and the scheduler component that runs them is the *pool*.
   stays a contained backend error rather than a delivered model, because
   the lambda hoisting runs after the entries are converted.
 
-## 17. Faithful `-o sexp` for typed unknowns; one product printer for models (commit: TBD)
+## 17. Faithful `-o sexp` for typed unknowns; one product printer for models (commits: `c945ea3`, `63f605b`)
 
 - **Motivation**: two small losses of information on the output side.
   `Builtin.to_sexp` printed every `` `Undefined_atom `` as a bare `?__`, so
@@ -789,7 +785,7 @@ and the scheduler component that runs them is the *pool*.
 - **Repro**: `-o sexp` on a model with six unknowns; before `?__` six
   times, after `?__46 ?__47 ?__50 ?__51 …`.
 
-## 18. One failing backend no longer discards the other backends' answers (commit: TBD)
+## 18. One failing backend no longer discards the other backends' answers (commit: `f6f42c8`)
 
 - **Motivation**: `Scheduling.run_pool` treated any exception escaping a
   task as the failure of the whole pool: it set the pool's state to
@@ -829,7 +825,7 @@ and the scheduler component that runs them is the *pool*.
   before: `Error: Paradox: parsing model failed`, exit 1; after: `UNSAT`,
   exit 0, 3 runs out of 3.
 
-## 19. `--timeout` is a wall-clock deadline, not a hint (commit: TBD)
+## 19. `--timeout` is a wall-clock deadline, not a hint (commit: `8fb68f3`)
 
 - **Motivation**: nothing enforced `--timeout` in wall-clock time.  The
   pool waited on a condition variable with no deadline of its own, and the
@@ -872,19 +868,39 @@ and the scheduler component that runs them is the *pool*.
   7.05 s at `--timeout 5`, 5.57 s at `--timeout 1`; after: 5.01 s and
   1.01 s, same verdict.
 
-## Recorded exposure: the wrapper pins only cvc5
+## 20. The component pins every solver it ships (commit: `642c609`)
 
-`component/x86_64-linux/nunchaku` exports **only** `NUNCHAKU_CVC5`, and
-Isabelle invokes it with `PATH="$CVC5_HOME:$KODKODI/bin:$SMBC_HOME:$PATH"`,
-so smbc, kodkodi and paradox are resolved from Isabelle's PATH even in the
-shipped configuration.  That is intended *while* those solvers come from the
-Isabelle distribution, which is what `regress/README.md` §2 records for smbc.
-The moment a self-built smbc is bundled into the component, the
-wrapper must also export `NUNCHAKU_SMBC="$NUN_DIR/solvers/smbc"` — and
-`NUNCHAKU_KODKODI` for any bundled kodkodi — or Isabelle's `$SMBC_HOME`
-binary wins and the combination that runs is not the one that was
-certified.  The code change belongs with the smbc bundling work; this is
-the record that it is owed.
+- **Motivation**: Isabelle invokes the wrapper with
+  `PATH="$CVC5_HOME:$KODKODI/bin:$SMBC_HOME:$PATH"`, so a solver the wrapper
+  does not name is whatever that PATH offers.  Until 0.5.3 the wrapper
+  exported only `NUNCHAKU_CVC5`, which was intended while smbc came from the
+  Isabelle distribution.  0.5.3 bundles smbc, and a bundled solver that is
+  not pinned is worse than no bundle at all: Isabelle's `$SMBC_HOME` binary
+  wins, and the combination that runs is not the one the gate certified.
+- **Fix**: the wrapper exports `NUNCHAKU_SMBC="$NUN_DIR/solvers/smbc"` next to
+  `NUNCHAKU_CVC5`.  The rule the component follows is "pin every solver you
+  ship" — `NUNCHAKU_KODKODI` likewise, if kodkodi is ever bundled.  kodkodi and
+  paradox are not bundled and stay resolved from Isabelle's PATH on purpose.
+- **Repro**: with smbc in `solvers/` but unexported, `--debug 3` reports
+  `NUNCHAKU_SMBC is not set: using \`smbc\`` and the run uses the
+  distribution's 0.4.1; with the export it names the bundled path.
+- Never export an *empty* value: §12 makes that an error, and Isabelle
+  requests all four of `cvc5 kodkod paradox smbc`, so one empty value would
+  fail every call.
+
+## The smbc the component ships
+
+smbc moved from the Isabelle distribution's **0.4.1** to a self-built
+**0.6.1** in 0.5.3, and the whole benchmark baseline was re-certified against
+it (`regress/README.md` §4).  0.4.1 is not a choice any more: its dependency
+era caps OCaml below 4.08, which predates the arm64 macOS backend entirely,
+so it cannot be rebuilt for the platforms this component targets.  0.6.1
+needs `containers 2.8.1` from the opam archive repository, because it uses the
+`containers.sexp` sublibrary that containers 3.x removed.  Two consequences
+worth knowing: 0.5 and later emit `default` branches in `match` values, a
+shape the model parser had never seen (§16 covers it), and part of the
+verdict drift recorded in `regress/README.md` §4 is the solver change rather
+than any patch in this file.
 
 ## Hermetic guard suites (`regress/cvc5_guard/`, `regress/soundness_guard/`, `regress/smbc_models/`, `regress/support/`)
 
