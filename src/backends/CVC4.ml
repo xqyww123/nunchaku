@@ -908,6 +908,17 @@ let is_available () =
   if res then Utils.debug ~section 3 "CVC4 is available";
   res
 
+(* The ORDER is load-bearing here for the same reason as in [Cvc5.options_l],
+   and that note is the long form: [pipes] below gives arm [i] priority
+   [30 + 10*i], the pool starts only its [-j] lowest-priority tasks, and the
+   Isabelle frontend never passes [-j] -- so at the default 3 most of these
+   seven arms never start, appending one adds an arm that never runs, and
+   inserting one demotes every arm below it.  Win-rate is not coverage: an arm
+   that never wins may simply never start.
+   One difference from cvc5, deliberate: cvc5's per-arm slice was decoupled
+   from its list's length and this one was not, because nothing measures CVC4
+   on this fork's workload and changing its arithmetic unmeasured would be a
+   silent re-tune of exactly the kind the cvc5 note warns about. *)
 let options_l =
   [ ""
   ; "--fmf-inst-engine"

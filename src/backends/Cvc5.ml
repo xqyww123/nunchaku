@@ -984,6 +984,28 @@ let is_available () =
   if res then Utils.debug ~section 3 "cvc5 is available";
   res
 
+(* The ORDER of this list is load-bearing.  It reads like a set of techniques
+   to try; the scheduler treats it as a priority queue that it then starves.
+
+   - [pipes] below gives arm [i] priority [30 + 10*i], and smbc asks for 20
+     ([Smbc.ml]), so the pool runs smbc and the lowest-numbered arms first.
+   - The pool starts only [-j] tasks at once and the Isabelle frontend never
+     passes [-j], so at the default 3 exactly smbc and arms 1 and 2 are
+     running at t = 0.  A third arm starts when a slot frees; on the captured
+     benchmark that is usually smbc dying at t = 0 on its own assertion.
+   - So appending an arm here adds one that may never start, and inserting one
+     demotes every arm below it by a place.  That is a change of behaviour for
+     arms whose text was not touched.
+
+   What that costs, measured on the captured Isabelle benchmark: every answer
+   to goal p034 is produced by [--macros-quant --macros-quant-mode=all], and
+   moving it from position 3 to position 4 loses the goal outright -- 0 of 30,
+   0 of 95 and 0 of 4 runs in three independent sessions, against 1 of 30,
+   37 of 95 and 1 of 4 with the shipped order.  The opposite mistake is just
+   as easy: arm 5 has never won a race in 5 x 79 x 4 runs, and it is
+   nonetheless p034's *fastest* solver at 133-268 ms.  It never wins because
+   it never starts.  Win-rate is not coverage, and this list must not be
+   pruned on win-rate data from a scheduler that starves most of it. *)
 let options_l =
   [
     "--fmf-mbqi=none";
@@ -992,6 +1014,14 @@ let options_l =
     "--e-matching";
     "--mbqi --fmf-mbqi=none";
   ]
+
+(* One arm's deadline is the cvc5 slice over this.  A constant, and not
+   [List.length options], on purpose: with the length in it, editing
+   [options_l] silently re-tuned every arm's deadline as well as re-ordering
+   the arms, so one edit was three effects and no measurement could say which
+   one it had seen.  It is [List.length options_l] today; keeping the two in
+   step is a deliberate edit, which is the point. *)
+let arm_slice_divisor_ = 5
 
 (* solve problem using cvc5 before [deadline] *)
 let call ?(options = "") ?prio ?slice ~print ~dump ~print_smt ~print_model ~env
@@ -1018,10 +1048,8 @@ let pipes ?(options = [ "" ]) ?slice ?(schedule_options = true) ~print ~dump
     ~print_smt ~print_model () =
   let slice =
     if schedule_options then (
-      let n = List.length options in
-      assert (n > 0);
-      (* each process' slice is only [1/n] of the global cvc5 slice *)
-      CCOption.map (fun s -> s /. float n) slice)
+      assert (options <> []);
+      CCOption.map (fun s -> s /. float arm_slice_divisor_) slice)
     else slice
   in
   let encode pb =
@@ -1031,6 +1059,8 @@ let pipes ?(options = [ "" ]) ?slice ?(schedule_options = true) ~print ~dump
           (* only print for the first task *)
           let print = print && i = 0 in
           let print_smt = print_smt && i = 0 in
+          (* an arm's position in [options_l] decides whether it runs at all;
+             the note there says why *)
           let prio = 30 + (10 * i) in
           call ?slice ~options ~prio ~print ~dump ~print_smt ~print_model ~env pb)
         options,

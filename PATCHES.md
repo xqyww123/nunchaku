@@ -1154,3 +1154,47 @@ repro, as "the same number".
   lands at 0.4-0.6 s against a 1 s wall, so it answers or not according to
   machine load; a 40-round interleaved run of the two builds on that goal
   alone gives 5 of 40 before and 6 of 40 after.
+
+## 25. What the order of `Cvc5.options_l` means, in the source (commit: TBD)
+
+- **Motivation**: `options_l` reads like a *set* of cvc5 configurations to try
+  and is treated like a *priority queue that the pool then starves*.  Three
+  facts decide what a run actually does, and all three were spread across
+  three files with nothing connecting them: arm *i* is given priority
+  `30 + 10*i` (`Cvc5.ml`, in `pipes`); smbc asks for 20 (`Smbc.ml`); the pool
+  starts only its `-j` lowest priorities and the Isabelle frontend never
+  passes `-j`, so at the default 3 exactly smbc and arms 1 and 2 are running
+  at t = 0, with a third arm starting when a slot frees -- on the captured
+  benchmark, usually smbc dying at t = 0 on its own assertion.  So
+  **appending an arm adds one that may never start, and inserting one demotes
+  every arm below it**: a change of behaviour for arms whose text nobody
+  touched.  On top of that the per-arm slice was `the cvc5 slice / List.length
+  options`, so one edit to the list was three effects at once and no
+  measurement could attribute what it saw.
+- **Repro** (the measurement that made this worth writing down): every answer
+  to goal `p034` of the captured benchmark comes from arm 3,
+  `--macros-quant --macros-quant-mode=all`.  Moving it to position 4 -- by
+  inserting an arm above it, which changes no existing arm's text -- loses the
+  goal outright: 0 of 30, 0 of 95 and 0 of 4 runs in three independent
+  sessions, against 1 of 30, 37 of 95 and 1 of 4 with the shipped order.  The
+  mirror-image trap is arm 5, which has never won a race in 5 x 79 x 4 runs
+  and is nonetheless `p034`'s *fastest* solver at 133-268 ms: it never wins
+  because it never starts.  Win-rate is not coverage, and this list must not
+  be pruned on win-rate data from a scheduler that starves most of it.
+- **Fix**: the note above `options_l` saying all of that, a pointer at the
+  priority expression, the same note for `CVC4.options_l`, and
+  `arm_slice_divisor_` -- a constant, replacing `List.length options` in the
+  per-arm slice, so that editing the list changes the technique set and the
+  priorities but not every arm's deadline as well.
+- **Verification**: the divisor is 5 and `List.length options_l` is 5, so
+  `s /. float 5` is the identical IEEE division and the shipped arms get a
+  bit-identical slice.  Checked from the outside too: at `--debug 5` both
+  builds print `slice: 0.60`, and the `--tlimit` each arm is given ranges
+  589-594 ms in five interleaved runs of each build -- one distribution, not
+  two.  Verdicts identical on all 79 problems at both tiers (5 rounds at 1 s,
+  2 at 5 s), paired median -0.10 ms with the new build faster in 200 of 395
+  pairs, which is a coin flip.
+- **Not done, deliberately**: `CVC4.options_l`'s slice is still tied to its
+  list's length.  Nothing measures CVC4 on this fork's workload, and changing
+  its arithmetic unmeasured would be exactly the silent re-tune the note
+  warns about.  The note says so where a reader of that file will find it.
