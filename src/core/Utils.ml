@@ -366,13 +366,30 @@ let external_program ~env_var ~default =
     (fun k -> k env_var (if set = None then "not set" else "set") prog);
   prog
 
+(* a regular file as well as executable: a directory passes an executability
+   test on its own *)
+let is_executable_file_ path =
+  try
+    (Unix.stat path).Unix.st_kind = Unix.S_REG
+    && (Unix.access path [Unix.X_OK]; true)
+  with Unix.Unix_error _ -> false
+
+let found_in_path_ prog =
+  match Sys.getenv_opt "PATH" with
+    | None -> false
+    | Some path ->
+      String.split_on_char ':' path
+      |> List.exists
+        (fun dir ->
+           (* an empty PATH entry means the current directory, as in a shell *)
+           let dir = if dir = "" then Filename.current_dir_name else dir in
+           is_executable_file_ (Filename.concat dir prog))
+
+(* Asked in process.  This was one [Sys.command], i.e. a fork and an exec of
+   /bin/sh, per ask, on the critical path of every call, to stat one file.
+   One deliberate difference from the shell's [command -v]: a shell builtin or
+   function of the name does not count as available, and no solver binary has a
+   use for that reading. *)
 let external_program_available prog =
-  let cmd =
-    if String.contains prog '/'
-    then
-      (* -f as well as -x: a directory passes test -x *)
-      Printf.sprintf "test -f %s && test -x %s"
-        (Filename.quote prog) (Filename.quote prog)
-    else Printf.sprintf "command -v %s > /dev/null 2> /dev/null" (Filename.quote prog)
-  in
-  try Sys.command cmd = 0 with Sys_error _ -> false
+  if String.contains prog '/' then is_executable_file_ prog
+  else found_in_path_ prog

@@ -141,7 +141,7 @@ case "${1-}" in
         # check is the two bytes `MZ`.
         [ -s "$leg/$stem.sha256" ] \
           || die "$plat: $leg/$stem.sha256 is missing -- release-smoke.sh did not digest what it built"
-        ( cd "$leg" && sha256sum -c "$stem.sha256" > /dev/null ) \
+        ( cd "$leg" && sha256_check "$stem.sha256" > /dev/null ) \
           || die "$plat: $stem does not match the digest its own leg recorded"
         cp "$leg/$stem" "$OUT/$stem-$plat"
         # The released sidecar carries that same digest under the released
@@ -149,7 +149,7 @@ case "${1-}" in
         # measured.  The name is the bare asset name, as 0.5.2's was.
         printf '%s  %s\n' "$(cut -d' ' -f1 < "$leg/$stem.sha256")" "$stem-$plat" \
           > "$OUT/$stem-$plat.sha256"
-        ( cd "$OUT" && sha256sum -c "$stem-$plat.sha256" > /dev/null ) \
+        ( cd "$OUT" && sha256_check "$stem-$plat.sha256" > /dev/null ) \
           || die "$plat: the released $stem-$plat does not match the digest its leg recorded"
       done
       # Named for THIS platform, inside THIS platform's artifact: a leg that

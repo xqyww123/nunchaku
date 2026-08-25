@@ -20,7 +20,7 @@ on:
   # the step only to die on the tag-vs-VERSION assertion inside the script,
   # having made no gh call.  A dispatch on the release tag itself does reach
   # publish -- that is the tag push by another name, not a rehearsal.  So the
-  # five gh calls first run for real at the tag: a stated limit, not an
+  # gh calls in publish first run for real at the tag: a stated limit, not an
   # oversight.  RELEASE_CHECKLIST.md section 9 step 1 in isabelle-packaging-ci
   # lists which of them a rehearsal covers and which it does not, and step 3
   # says what to do when one of them fails.
@@ -36,9 +36,10 @@ concurrency:
   # a warning, not a failure.
   group: ${{ github.workflow }}-${{ github.ref }}
   # Cancel only pull-request runs.  Every other event either costs a 300-minute
-  # win-64 leg that somebody is waiting on (the workflow_dispatch rehearsal,
-  # which shares this group with any push to main and was being cancelled by
-  # one) or must never be interrupted at all (a tag push).
+  # win-64 leg that somebody is waiting on -- a dispatch shares this group with
+  # a push to the same ref, so cancel-in-progress would let the push kill the
+  # rehearsal -- or must never be interrupted at all (a tag push).  No dispatch
+  # has run yet; this is the trigger table read, not an incident recalled.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # The default for every job: only release-assets widens it, and its own

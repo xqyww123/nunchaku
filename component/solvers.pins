@@ -4,8 +4,8 @@
 # nowhere else.  Two repositories read this file:
 #
 #   * this fork's CI -- .github/scripts/solver-pins.sh is the one parser, and it
-#     is sourced by release-fetch-cvc5.sh, release-build-unix.sh, w2-smbc.sh and
-#     release-attach.sh, and by one `run:` block in
+#     is sourced by release-fetch-cvc5.sh, release-build-unix.sh, w2-smbc.sh,
+#     release-attach.sh and release-smoke.sh, and by one `run:` block in
 #     .github/workflows/main.yml (the win-64 step that exports this file's
 #     x86_64-cygwin row into the PowerShell cvc5 steps);
 #   * isabelle-packaging-ci's conda/components/isabelle-nunchaku/recipe.yaml,

@@ -26,7 +26,8 @@ EXE=${EXE:-}
 die () { echo "::error::${0##*/}: $*"; exit 1; }
 
 # sha256_of lives in solver-pins.sh so the digest tool has one definition
-# across the scripts that need it (release-fetch-cvc5.sh is the other).
+# across the scripts that need it (release-fetch-cvc5.sh and
+# release-attach.sh are the others).
 # shellcheck source=.github/scripts/solver-pins.sh
 . "$SRC_ROOT/.github/scripts/solver-pins.sh"
 
@@ -218,13 +219,26 @@ cat "$PWD/versions-$ISA_PLATFORM.txt"
 # exist until a step that runs after this one, so hashing by name would fail
 # that leg -- measured by running this block in a reconstructed win-64
 # workspace, not on a runner; no leg of this workflow has run yet.  Hashing the
-# inputs also makes the digested file the same file the smoke just drove, which
-# hashing a copy would not guarantee.
+# inputs also digests the file the smoke's staged copy was installed FROM,
+# rather than a bare name that may or may not be that file.
 # The sidecar records the RELEASED stem, because that is the name
 # release-attach.sh verifies it under.
 digest () {  # <source path> <released stem>
   [ -s "$1" ] || die "$1 is missing -- the leg cannot digest what it built"
-  printf '%s  %s\n' "$(sha256_of "$1" | cut -d' ' -f1)" "$2" > "$PWD/$2.sha256"
+  # Assign, then check.  Inside a printf the command substitution's exit status
+  # is discarded and `set -e` never sees it, so a platform without either
+  # digest tool would write an EMPTY hash, the leg would go green, and collect
+  # would redden up to 300 minutes later -- the failure mode
+  # if-no-files-found: error was added to abolish.
+  local hex
+  hex=$(sha256_of "$1" | cut -d' ' -f1) \
+    || die "no sha256 tool on this runner (looked for sha256sum and shasum)"
+  case $hex in
+    [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*) ;;
+    *) die "the digest of $1 came back as '$hex', which is not a sha256" ;;
+  esac
+  [ ${#hex} -eq 64 ] || die "the digest of $1 is ${#hex} characters, not 64: '$hex'"
+  printf '%s  %s\n' "$hex" "$2" > "$PWD/$2.sha256"
   cat "$PWD/$2.sha256"
 }
 digest "$NUNCHAKU_SRC" nunchaku-bin

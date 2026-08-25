@@ -350,28 +350,36 @@ let availability_of_solver_ = function
   | S_paradox -> Backends.Paradox.is_available
   | S_smbc -> Backends.Smbc.is_available
 
-let solver_usable_ sel =
-  List.mem sel (requested_solvers_ ()) && availability_of_solver_ sel ()
+(* The solvers this run can use: requested, and with a binary that is there and
+   runnable.  Asked once, at the top of [make_model_pipeline], and passed down
+   as a value.  Two things consume it -- the unavailable-solver warning and
+   each [make_<solver>] below -- and one list cannot tell them different
+   stories, where asking each of them separately could, and did cost a process
+   spawn per ask.  One answer per run is all there is to have: which binary a
+   backend would invoke is fixed by $NUNCHAKU_<SOLVER> and $PATH, and this
+   process changes neither. *)
+let usable_solvers_ () =
+  List.filter (fun s -> availability_of_solver_ s ()) (requested_solvers_ ())
 
 (* Solvers requested by an explicit --solvers but unavailable are reported
    (one aggregated stderr line): silently dropping arms would hide a broken
    installation, which is also why the warning is on by default and has to be
    turned off explicitly with [-W3 false]. *)
-let warn_unavailable_requested_ () =
+let warn_unavailable_requested_ ~usable =
   match !solvers with
   | None -> ()
   | Some requested ->
     let missing =
-      List.filter (fun s -> not (availability_of_solver_ s ())) requested
+      List.filter (fun s -> not (List.mem s usable)) requested
       |> List.map string_of_solver_
     in
     if missing <> [] then
       Utils.warningf Utils.Warn_solver_unavailable "%s"
         (String.concat ", " missing)
 
-let make_cvc5 ~j () =
+let make_cvc5 ~usable ~j () =
   let open Transform.Pipe in
-  if solver_usable_ S_cvc5
+  if List.mem S_cvc5 usable
   then
     Backends.Cvc5.pipes
       ~options:Backends.Cvc5.options_l
@@ -385,9 +393,9 @@ let make_cvc5 ~j () =
     @@@ id
   else fail
 
-let make_cvc4 ~j () =
+let make_cvc4 ~usable ~j () =
   let open Transform.Pipe in
-  if solver_usable_ S_CVC4
+  if List.mem S_CVC4 usable
   then
     Backends.CVC4.pipes
       ~options:Backends.CVC4.options_l
@@ -401,9 +409,9 @@ let make_cvc4 ~j () =
     @@@ id
   else fail
 
-let make_paradox () =
+let make_paradox ~usable () =
   let open Transform.Pipe in
-  if solver_usable_ S_paradox
+  if List.mem S_paradox usable
   then
     Backends.Paradox.pipe
       ~print_model:(!pp_all_ || !pp_raw_model_)
@@ -412,9 +420,9 @@ let make_paradox () =
     @@@ id
   else fail
 
-let make_kodkod () =
+let make_kodkod ~usable () =
   let open Transform.Pipe in
-  if solver_usable_ S_kodkod
+  if List.mem S_kodkod usable
   then
     Backends.Kodkod.pipe
       ~min_size:!kodkod_min_bound_
@@ -427,9 +435,9 @@ let make_kodkod () =
     @@@ id
   else fail
 
-let make_smbc () =
+let make_smbc ~usable () =
   let open Transform.Pipe in
-  if solver_usable_ S_smbc
+  if List.mem S_smbc usable
   then
     Backends.Smbc.pipe
       ~print:!pp_all_
@@ -443,15 +451,16 @@ let make_smbc () =
 let make_model_pipeline () =
   let open Transform.Pipe in
   let open Pipes in
-  warn_unavailable_requested_ ();
+  let usable = usable_solvers_ () in
+  warn_unavailable_requested_ ~usable;
   (* setup pipeline *)
   let check = !check_all_ in
   (* solvers *)
-  let cvc5 = make_cvc5 ~j:!j () in
-  let cvc4 = make_cvc4 ~j:!j () in
-  let paradox = make_paradox () in
-  let kodkod = make_kodkod () in
-  let smbc = make_smbc () in
+  let cvc5 = make_cvc5 ~usable ~j:!j () in
+  let cvc4 = make_cvc4 ~usable ~j:!j () in
+  let paradox = make_paradox ~usable () in
+  let kodkod = make_kodkod ~usable () in
+  let smbc = make_smbc ~usable () in
   let make_specialize () =
     if !enable_specialize_ then
       Tr.Specialize.pipe ~print:(!pp_specialize_ || !pp_all_) ~check
