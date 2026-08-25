@@ -1,0 +1,8 @@
+# complete
+# sound
+val a_ : type.
+val b_ : type.
+val xs_ : a_.
+val ys_ : b_.
+val f_ : a_ -> b_.
+goal ~ (f_ xs_ = ys_).

@@ -1,0 +1,5 @@
+(result SAT
+  :model ((type a_ ($a__0 $a__1))
+          (val xs_ Nil_)
+          (val ys_ (Cons_ $a__0 Nil_))
+          (val g_ (lambda ((x list_)) (match x (case Nil_ $a__0) (case (Cons_ y z) $a__1))))))

@@ -1,0 +1,4 @@
+(result SAT
+  :model ((type a_ ($a__0 $a__1))
+          (val c_ (match ?s (case default $a__1)))
+          (val f_ (lambda ((x0 a_)) (lambda ((x1 a_)) $a__0)))))

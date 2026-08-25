@@ -1,0 +1,9 @@
+# complete
+# sound
+val a_ : type.
+data col_ := R_ | G_ | B_ | Y_.
+data lst_ := N_ | C_ col_ lst_.
+val h_ : lst_ -> col_.
+val k_ : (col_ -> col_) -> col_.
+val zs_ : lst_.
+goal ~ (h_ (C_ (k_ (fun x. x)) zs_) = h_ zs_).

@@ -1,0 +1,13 @@
+(result SAT
+   :model ((val k_
+             (lambda  ((x0 (=> col_ col_)))
+              (match (x0 G_)
+               (case Y_ (?col__col__col__12 x0))
+               (case B_ (?col__col__col__13 x0))
+               (case G_ (?col__col__col__14 x0))
+               (case R_ ?col__16))))
+           (val zs_ N_)
+           (val h_
+             (lambda  ((x1 lst_))
+              (match x1 (case (C_ x2 x3) G_)
+                        (case N_ Y_))))))

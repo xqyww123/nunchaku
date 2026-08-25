@@ -1,0 +1,4 @@
+(result SAT
+  :model ((type a_ ($a__0 $a__1))
+          (val xs_ (Cons_ (match ?l1 (case default $a__0)) ?l1))
+          (val ys_ (Cons_ $a__0 ?l1))))

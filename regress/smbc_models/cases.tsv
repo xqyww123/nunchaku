@@ -1,0 +1,32 @@
+# Case corpus for the smbc model parser.  One row per case.
+#
+# case            the case's name
+# model           models/<model>.txt -- fed to nunchaku as smbc's stdout
+# problem         problems/<problem>.nun -- the problem nunchaku is asked
+# deadline        wall-clock ceiling in seconds for the whole run, or "-"
+# expectation     one word, spelled out in README.md
+#
+# Golden output files are NOT part of this commit: the shared driver
+# (regress/support/run_case) lands separately and the expectations are
+# generated once every code change in this release has landed.
+#
+#case	model	problem	deadline	expectation
+m_one	m_one	chain	-	recovered
+m_uau	m_uau	two	-	opaque
+m_cross	m_cross	two	-	recovered
+m_cross2	m_cross2	two	-	recovered
+m_classconf	m_classconf	two	-	conflict
+m_defonly	m_defonly	nest	-	contained
+m_defonly2	m_defonly2	headpos	-	recovered
+m_defonly3	m_defonly3	headpos	-	contained
+m_headpos	m_headpos	headpos	-	recovered
+m_matchval	m_matchval	headpos	-	recovered
+m_match_hp_22	m_match_hp_22	headpos	1	recovered
+m_match_22	m_match_22	matchp	1	contained
+m_adv_36	m_adv_36	chain	1	opaque
+m_adv_48	m_adv_48	chain	1	opaque
+m_eqn_24	m_eqn_24	distp	1	recovered
+m_dist_28	m_dist_28	distp	1	recovered
+m_chain_4000	m_chain_4000	chain	1	recovered
+real_part_app	real_part_app	part_app	-	recovered
+real_multi	real_multi	multi	-	contained

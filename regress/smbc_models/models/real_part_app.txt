@@ -1,0 +1,9 @@
+(result SAT
+   :model ((type a ($a_0 $a_1))
+           (val list_to_prop list_to_prop)
+           (val b $a_0)
+           (val a2 $a_1)
+           (val sup
+             (lambda  ((x0 (=> a Bool))) (lambda  ((x1 (=> a Bool))) (lambda 
+              ((x2 a)) false))))
+           (val bot (lambda  ((x3 a)) ?prop_9))))

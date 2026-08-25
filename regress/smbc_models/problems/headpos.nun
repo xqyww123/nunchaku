@@ -1,0 +1,13 @@
+# complete
+# sound
+val a_ : type.
+
+data list_ :=
+  Nil_
+| Cons_ a_ list_.
+
+val xs_ : list_.
+val ys_ : list_.
+val g_ : list_ -> a_.
+
+goal ~ (g_ (Cons_ (g_ ys_) xs_) = g_ xs_).

@@ -1,0 +1,7 @@
+(result SAT
+  :model ((type a_ ($a__0 $a__1))
+          (val ys_ (Cons_ (ite (= ?u1 $a__0) $a__0 $a__1) ?l1))
+          (val xs_ (Cons_ (ite (= $a__1 ?u2)
+                               (ite (distinct ?u3 $a__0) ?u1 $a__1)
+                               (match ?l1 (case (Cons_ x1 x2) x1) (case Nil_ $a__0)))
+                          ?l1))))
