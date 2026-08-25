@@ -179,8 +179,7 @@ at the next sync.  Base commit: d23a876.
   failure are indistinguishable there.  Two of the four sites with that
   shape disappeared with the re-conversions; the survivors only *learn*, so
   a collapsed exception costs a recovery and never a verdict.  Noted in the
-  source next to `push_ty`.
-- **Upstream PR**: not submitted yet.
+  source next to `set_term_type`.
 
 ## 8. The smbc model parser treats its input as untrusted
 
@@ -196,8 +195,9 @@ at the next sync.  Base commit: d23a876.
   first time in the shipping configuration.
 - **Fix**, one sentence now written in the source: *the model parser treats
   smbc output as untrusted input; it reports, it never asserts.*
-  Concretely: the match-arity `assert` becomes an error naming both
-  arities; a match that names no resolvable constructor and has an untyped
+  Concretely: three assertions on solver-supplied data become errors -- the
+  match arity (naming both arities), a TIP cast, and the assumption that two
+  `if` branches of one value bind the same type; a match that names no resolvable constructor and has an untyped
   scrutinee gets a message saying exactly that; an `A.Fun` whose domain
   disagrees with the expectation warns and drops the expectation;
   `convert_model` contains a failed value conversion per entry, warning and
@@ -215,7 +215,6 @@ at the next sync.  Base commit: d23a876.
   warning, `val xs_ := (?__unparsable list_)`, the rest of the model, exit
   0.  For the sibling: the same setup with a cvc5 that answers one second
   later; before, cvc5's model is lost, after it is delivered.
-- **Upstream PR**: not submitted yet.
 
 ## 9. Faithful `-o sexp` for typed unknowns; one product printer for models
 
@@ -239,7 +238,6 @@ at the next sync.  Base commit: d23a876.
   potentially-spurious model.  Neither order is meaningful.
 - **Repro**: `-o sexp` on a model with six unknowns; before `?__` six
   times, after `?__46 ?__47 ?__50 ?__51 …`.
-- **Upstream PR**: not submitted yet.
 
 ## Generated numbers in model output: the `?__<n>` / `v_N/M` contract
 
