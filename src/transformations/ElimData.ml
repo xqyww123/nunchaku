@@ -956,7 +956,7 @@ module Make(M : sig val mode : mode end) = struct
 
   type fun_def = (T.t, T.t) DT.t * Model.symbol_kind
 
-  module IntMap = CCMap.Make(CCInt)
+  module IntMap = Ordered_map.Make(CCInt)
 
   (* temporary structure used for decoding terms *)
   type decoding = {

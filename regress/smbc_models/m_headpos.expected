@@ -6,7 +6,7 @@ SAT: {
       (if $a__1 = ?__3
        then if ~ ?__4 = $a__0 then ?__1 else $a__1
        else
-         match ?__2 with | Cons_ v1 v2 -> v1| Nil_  -> $a__0 end) 
+         match ?__2 with | Nil_  -> $a__0| Cons_ v1 v2 -> v1 end) 
       ?__2.
 }
 {backend:smbc, time:Ns}

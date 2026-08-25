@@ -192,6 +192,11 @@ module Print(T : REPR)
         | None -> ()
         | Some (d,_) -> fpf out "@ @[<hv2>| default ->@ %a@]" pp d
       in
+      (* branch order is [ID.Map]'s, i.e. ascending ID, i.e. -- since the
+         front-end mints a datatype's constructors as it reads them -- the order
+         the constructors were declared in.  [Ordered_map] is what makes that
+         order the same under every OCaml version; do not print from anything
+         whose order containers leaves to the compiler. *)
       fpf out "@[<hv>@[<hv2>match @[%a@] with@ %a%a@]@ end@]"
         pp t (Utils.pp_list ~sep:"" pp_case) (ID.Map.to_list l)
         pp_def def
@@ -231,14 +236,16 @@ module Print(T : REPR)
         | None -> []
         | Some (d,_) -> [lst [str "default"; to_sexp d]]
       in
-      lst
-        (str "match" ::
-           to_sexp t ::
-           ID.Map.fold
-             (fun c (tys,vars,t) acc ->
-                lst [str (ID.to_string c); lst (List.map to_sexp tys @ List.map var_to_sexp vars); to_sexp t]
-                :: acc)
-             l last)
+      (* same branch order as the [pp] above: [ID.Map]'s, ascending ID.  A fold
+         that conses would read them back reversed, and the two printers would
+         disagree on the order of the very same term. *)
+      let cases =
+        List.map
+          (fun (c,(tys,vars,t)) ->
+             lst [str (ID.to_string c); lst (List.map to_sexp tys @ List.map var_to_sexp vars); to_sexp t])
+          (ID.Map.to_list l)
+      in
+      lst (str "match" :: to_sexp t :: (cases @ last))
     | Bind (b, _, _) ->
       let s = Binder.to_string b in
       let vars, body = unroll_binder b t in
@@ -1223,7 +1230,7 @@ module Util(T : S)
   end
 
   module Tbl = CCHashtbl.Make(As_key)
-  module Map = CCMap.Make(As_key)
+  module Map = Ordered_map.Make(As_key)
 
   (* remove duplicates in [l] *)
   let remove_dup l : T.t list =

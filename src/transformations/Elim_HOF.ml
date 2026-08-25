@@ -39,7 +39,7 @@ type ty = T.t
     in this section. *)
 
 module IntSet = CCSet.Make(CCInt)
-module IntMap = CCMap.Make(CCInt)
+module IntMap = Ordered_map.Make(CCInt)
 
 type arity_set = {
   as_set : IntSet.t;
@@ -72,7 +72,7 @@ let compare_fun f1 f2 =
     | F_select _, _
       -> CCOrd.int (to_int_ f1) (to_int_ f2)
 
-module FunMap = CCMap.Make(struct type t = fun_ let compare = compare_fun end)
+module FunMap = Ordered_map.Make(struct type t = fun_ let compare = compare_fun end)
 
 (* print arity map *)
 let pp_arities out tbl =

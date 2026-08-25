@@ -133,7 +133,7 @@ module Make(T : TI.REPR)
     | Const _, _ | App _, _ | Arrow _, _ | Builtin _, _ ->
       Stdlib.compare (to_int_ (repr a)) (to_int_ (repr b))
 
-  module Map = CCMap.Make(struct
+  module Map = Ordered_map.Make(struct
       type t = T.t
       let compare = cmp_ty
     end)

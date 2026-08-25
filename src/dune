@@ -7,3 +7,25 @@
     (run ocaml ./mkflags.ml))
   )
 
+; One map, one order.  [CCMap.Make]'s [to_list] hands back the bindings in
+; descending key order below OCaml 5.1 and in ascending key order from 5.1 on
+; (containers only defines its own [to_list] under [@@@iflt 5.1]; above that the
+; stdlib's shows through).  Nunchaku's maps are keyed on [ID.t], which compares
+; on a global counter, so a map built straight from containers makes the printed
+; order of match branches and of SMT-LIB datatype constructors depend on which
+; compiler built the binary.  [Ordered_map.Make] pins that order; this rule is
+; the enforcement, the way the [Close_task] rule in main/dune enforces its own
+; invariant.  [core/Ordered_map.ml] is excluded because it names [CCMap.Make]
+; both to call it and to explain itself.
+(rule
+  (alias runtest)
+  (deps
+    (source_tree core)
+    (source_tree transformations)
+    (source_tree backends)
+    (source_tree parsers)
+    (source_tree random)
+    (source_tree main))
+  (action
+    (bash "hits=$(grep -rn 'CCMap\\.Make' core transformations backends parsers random main | grep -v '^core/Ordered_map\\.ml:' || true); test -z \"$hits\" || { echo \"build maps with Ordered_map.Make, not CCMap.Make (see src/core/Ordered_map.ml):\" >&2; echo \"$hits\" >&2; exit 1; }")))
+

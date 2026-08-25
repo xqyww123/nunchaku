@@ -888,6 +888,55 @@ and the scheduler component that runs them is the *pool*.
   requests all four of `cvc5 kodkod paradox smbc`, so one empty value would
   fail every call.
 
+## 21. Match branches print in declaration order, on every OCaml (commit: `pending`)
+
+- **Motivation**: the branches of a `match` in a printed model came out in the
+  reverse of the order the constructors were declared in — a two-constructor
+  list type printed `| Cons_ … | Nil_ …` for a `data lst_ := N_ | C_ …`
+  declaration — and *which* of the two orders you got depended on the OCaml
+  version the binary was built with, not on anything in the problem.  Nunchaku
+  keys the branches of a `match` on `ID.t`, which compares on a process-global
+  counter, and read them back with `CCMap.to_list`.  Containers defines that
+  function itself as a fold that conses, which reverses, but only under
+  `[@@@iflt 5.1]`: from OCaml 5.1 on it omits it and the stdlib's own
+  `Map.to_list`, which does not reverse, shows through.  Same containers 3.18,
+  same sources, opposite lists.  Two consequences, one cosmetic and one not:
+  the model a user reads listed the branches backwards, and the CI matrix
+  could not be green, because four `regress/smbc_models` goldens recorded the
+  4.14 order and the OCaml 5.4 leg therefore failed on every commit.
+- **Repro**: with containers 3.18, `module M = CCMap.Make(CCInt)` and
+  `M.to_list (M.of_list [1,"a";2,"b";3,"c"])` gives the keys `3,2,1` on OCaml
+  4.14.1 and `1,2,3` on OCaml 5.4.0.  End to end, before this patch:
+  `regress/smbc_models/real_multi` printed `| Y_ | B_ | G_ | R_` when built
+  with 4.14 and `| R_ | G_ | B_ | Y_` when built with 5.4, for a problem that
+  declares `data col_ := R_ | G_ | B_ | Y_`.
+- **Fix**: every map in `src/` is now built by `Ordered_map.Make`
+  (`src/core/Ordered_map.ml`) rather than `CCMap.Make`.  It is `CCMap.Make`
+  with `to_list` pinned to `bindings`, i.e. to ascending key order, which is
+  what `iter`, `fold` and `bindings` already gave on every version, and — since
+  the front-end mints a datatype's constructors as it reads them — is the
+  order the constructors were declared in.  A `dune runtest` rule in `src/dune`
+  fails the build if `CCMap.Make` reappears anywhere outside that one file, the
+  way the `Close_task` rule in `src/main/dune` guards its own invariant, and a
+  qtest case in `src/core/ID.ml` asserts the order of `ID.Map.to_list`
+  directly.  `TermInner`'s sexp printer, which read the same branches back with
+  a fold that conses and so listed them in the opposite order from the
+  human-readable printer, now reads them through `to_list` as well: one order
+  for both printers.
+- **What changes for a reader of a model**: branch order, and nothing else.
+  Measured over 130 problems from `bench/`, `data/` and `regress/gold.nun`
+  against real smbc 0.6.1, exactly one problem's output changed — `ho_data.nun`,
+  where a `match` inside the SAT model swapped its two branches — and its
+  verdict did not.  No verdict, no model-shown/model-missing outcome, and no
+  timing changed anywhere, so the regression baseline in `regress/baseline/`
+  (which stores verdicts and a yes/no model column, never model text; see
+  `regress/gate.sh`) still applies unchanged and needs no re-certification run.
+- **Scope note**: the OCaml 5.0.x leg of the CI matrix is *below* 5.1, so it
+  behaved like 4.14 and was green before this patch as well; the 5.4.x leg was
+  the one failing.  After the patch the order does not depend on the version at
+  all, and the four goldens are byte-identical between a 4.14.1 build and a
+  5.4.0 build.
+
 ## The smbc the component ships
 
 smbc moved from the Isabelle distribution's **0.4.1** to a self-built

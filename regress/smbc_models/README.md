@@ -85,6 +85,15 @@ learned the hard way:
 2. Entry order carries no meaning. The two model printers list entries in
    opposite orders and only one of them is now used; no comparison may
    encode either order.
+3. The order of the branches of a printed `match` *does* carry meaning, and
+   these goldens pin it: it is ascending ID, which for a datatype's
+   constructors is the order they were declared in. Four of the goldens here
+   (`m_headpos`, `m_matchval`, `m_match_hp_22`, `real_multi`) once recorded
+   the reverse of it and so failed on OCaml 5.x only, because
+   `CCMap.to_list` reverses below OCaml 5.1 and does not from 5.1 on. Every
+   map now comes from `Ordered_map.Make` (`src/core/Ordered_map.ml`), which
+   pins that order on every compiler; if these four ever disagree between
+   two OCaml versions again, that is what broke.
 
 ## The cases, and what each is for
 
@@ -243,7 +252,7 @@ it the printer), where the pre-release binary exceeded 60 s at every one.
 ## Known reader gap, recorded not fixed
 
 `m_matchval` parses and prints fine, but what it prints is
-`match v_0/54 with | Cons_ y z -> … | Nil_ -> … end`, and Isabelle's model
+`match v_0/54 with | Nil_ -> … | Cons_ y z -> … end`, and Isabelle's model
 parser (`nunchaku_model.ML`, `parse_tm`) has no production for `match`,
 `with`, `|` or `end`. A model containing a datatype-scrutinee function
 value is therefore unreadable by the Isabelle frontend — it costs the

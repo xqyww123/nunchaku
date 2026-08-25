@@ -66,7 +66,7 @@ type ground_ty = Ty.t
 let gty_make = Ty.app
 let gty_const id = gty_make id []
 
-module GTy_map = CCMap.Make(FO.Ty)
+module GTy_map = Ordered_map.Make(FO.Ty)
 
 let gty_head ty = match Ty.view ty with
   | FO.TyApp (id,_) -> Some id

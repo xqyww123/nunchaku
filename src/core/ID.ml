@@ -124,7 +124,18 @@ module As_key = struct
   let equal = equal
 end
 
-module Map = CCMap.Make(As_key)
+module Map = Ordered_map.Make(As_key)
+
+(* [Map.to_list] must hand the bindings back in ascending ID order, i.e. in the
+   order the IDs were minted, on every OCaml version.  Straight from containers
+   it does not: below OCaml 5.1 it reverses.  That order is user-visible -- it is
+   the order match branches print in -- so it is pinned here. *)
+(*$T
+  (let a = make "a" in let b = make "b" in \
+   let m = Map.add a "first" (Map.add b "second" Map.empty) in \
+   List.map snd (Map.to_list m) = ["first"; "second"])
+*)
+
 module Set = CCSet.Make(As_key)
 module Tbl = CCHashtbl.Make(As_key)
 module PerTbl = CCPersistentHashtbl.Make(As_key)

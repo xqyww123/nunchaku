@@ -15,7 +15,7 @@ module M = Model
 module DT = M.DT
 module Subst = Var.Subst
 
-module Int_map = CCMap.Make(CCInt)
+module Int_map = Ordered_map.Make(CCInt)
 
 type term = T.t
 

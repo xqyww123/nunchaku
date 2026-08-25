@@ -22,13 +22,13 @@ let kodkodi_program_ () =
 type problem = FO_rel.problem
 type res = (FO_rel.expr, FO_rel.sub_universe) Problem.Res.t
 
-module SUMap = CCMap.Make(struct
+module SUMap = Ordered_map.Make(struct
     type t = FO_rel.sub_universe
     let compare = FO_rel.su_compare
   end)
 
-module StrMap = CCMap.Make(String)
-module IntMap = CCMap.Make(CCInt)
+module StrMap = Ordered_map.Make(String)
+module IntMap = Ordered_map.Make(CCInt)
 
 (* names used by kodkod, based on arity *)
 type kodkod_name = string

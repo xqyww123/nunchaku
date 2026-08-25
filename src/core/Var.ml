@@ -121,7 +121,7 @@ module Set(Ty : sig type t end) = CCSet.Make(struct
     let compare = compare
   end)
 
-module Map(Ty : sig type t end) = CCMap.Make(struct
+module Map(Ty : sig type t end) = Ordered_map.Make(struct
     type 'a _t = 'a t
     type t = Ty.t _t
     let compare = compare

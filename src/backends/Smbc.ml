@@ -378,7 +378,7 @@ let is_model_conversion_error = function
   | T.ApplyError _ -> true
   | _ -> false
 
-module StrMap = CCMap.Make(String)
+module StrMap = Ordered_map.Make(String)
 module StrTbl = CCHashtbl.Make(CCString)
 
 (* local mapping/typing env for variables *)

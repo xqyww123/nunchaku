@@ -545,7 +545,7 @@ let atoms_of_model m: FO_rel.atom Iter.t =
         | DT.Yield (FO_rel.Tuple_set set) -> atoms_of_ts set yield
         | _ -> assert false)
 
-module AM = CCMap.Make(struct
+module AM = Ordered_map.Make(struct
     type t = FO_rel.atom
     let compare = FO_rel.atom_cmp
   end)

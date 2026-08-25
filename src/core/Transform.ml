@@ -33,7 +33,7 @@ module Features = struct
     | Copy
     | Partial_app_cstor (* partially applied cstors *)
 
-  module M = CCMap.Make(struct
+  module M = Ordered_map.Make(struct
       type t = key
       let compare = Stdlib.compare
     end)
