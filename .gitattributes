@@ -1,6 +1,24 @@
-# The win-64 release leg runs .github/scripts/w2-*.sh straight out of
-# actions/checkout@v4 through Isabelle's bundled Cygwin bash.  Today
-# windows-latest leaves core.autocrlf off and the scripts arrive with LF, so the
-# leg is green -- but that is a runner-image default, not a guarantee, and a
-# CRLF `set -euo pipefail\r` fails Cygwin bash before it does anything.  Pin it.
-*.sh text eol=lf
+# Every text file in this repository is checked out with LF, on every platform.
+#
+# The win-64 release leg runs .github/scripts/w2-*.sh, the shared
+# release-*.sh scripts and component/nunchaku straight out of
+# actions/checkout@v4 through Isabelle's bundled Cygwin bash, and reads
+# component/solvers.pins, VERSION, nunchaku.opam and regress/*.nun with tools
+# that do not treat CR as whitespace.  Today windows-latest leaves
+# core.autocrlf off and everything arrives with LF, so the leg is green -- but
+# that is a runner-image default, not a guarantee.  Measured 2026-08-25 on CRLF
+# copies of the committed files:
+#
+#   component/nunchaku   ./nunchaku --help  ->  env: "bash\r": No such file
+#   component/solvers.pins  the win-64 pins step exits 0 with CVC5_VERSION=1.3.4\r
+#                        (awk's default FS is [ \t\n]+, so \r stays in the field)
+#                        and the leg dies ~250 minutes later on a cvc5 URL 404
+#   VERSION              release-attach.sh prints
+#                        `tag 'refs/tags/v0.5.3' does not match VERSION 'v0.5.3'`
+#                        -- two strings that look identical
+#
+# A per-extension list is what let those three through: the previous rule was
+# `*.sh text eol=lf`, which pinned the files that were already safe and missed
+# the wrapper the leg executes.  So pin everything instead, and let
+# `text=auto` leave real binaries alone.
+* text=auto eol=lf

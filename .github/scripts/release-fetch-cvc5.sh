@@ -21,8 +21,13 @@ SRC_ROOT=${SRC_ROOT:-$PWD}
 # shellcheck source=.github/scripts/solver-pins.sh
 . "$SRC_ROOT/.github/scripts/solver-pins.sh"
 
+# Assign, then split.  `read -r asset sha <<< "$(pin ...)"` would take READ's
+# exit status, so a missing or duplicated pins record would leave both fields
+# empty with `set -e` none the wiser (solver-pins.sh's header records the
+# measurement).
 CVC5_VERSION=$(pin cvc5-version)
-read -r asset sha <<< "$(pin cvc5 "$ISA_PLATFORM")"
+row=$(pin cvc5 "$ISA_PLATFORM")
+read -r asset sha <<< "$row"
 
 die () { echo "::error::${0##*/}: $*"; exit 1; }
 

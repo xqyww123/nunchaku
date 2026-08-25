@@ -157,9 +157,46 @@ grep -q '^SAT' smoke-smbc.out \
 # other captures do the same, because a program that keeps writing after head
 # exits dies of SIGPIPE and fails the pipeline under `set -o pipefail`.
 "$plat_dir/solvers/smbc$EXE" --version > smbc-smoke-version.txt 2>&1
+nun_line=$(head -1 version.txt)
+smbc_line=$(head -1 smbc-smoke-version.txt)
+
+# The record is ASSERTED where it is written, not only where it is read.
+# src/main/dune builds GitVersion.ml with
+# `(git rev-parse HEAD | tr -d '\n') || echo -n unknown`, so a build whose git
+# call fails -- on win-64 that build runs inside Isabelle's Cygwin over a
+# workspace checked out by Windows git, where a safe.directory complaint is
+# enough -- stamps the literal `unknown`.  The version check at step 1 above is
+# `grep -q " $version "`, which `nunchaku 0.5.3 unknown` satisfies (measured
+# 2026-08-25).  Without the check below, such a leg goes green, attaches its
+# record, and is caught only by isabelle-packaging-ci -- one repository and one
+# publish gate later.  The prefix `nunchaku <version> ` is matched literally and
+# the whole remainder must be forty lowercase hex characters -- which is also
+# what rules out a fourth field, since a space is not hex.  That remainder is
+# the commit the packaging side compares against the tag.
+# `case`, not `grep -E`: no subprocess, and the character class is enumerated
+# rather than written as a range, so no collation order can widen it.
+prefix="nunchaku $version "
+case "$nun_line" in
+  "$prefix"*) commit=${nun_line#"$prefix"} ;;
+  *) die "the version record must read 'nunchaku $version <40-hex commit>'; the binary said '$nun_line'" ;;
+esac
+case "$commit" in
+  *[!0123456789abcdef]*) hex=no ;;
+  *)                     hex=yes ;;
+esac
+# The length is in the message because the character that most often breaks
+# this is invisible: a CR from a CRLF checkout makes the field print exactly
+# like a good sha, and only "41 characters" says what is wrong.
+if [ "$hex" != yes ] || [ "${#commit}" -ne 40 ]; then
+  die "the version record's commit field is not 40 lowercase hex; it is ${#commit} characters: '$commit'"
+fi
+# Nothing is asserted about the smbc line here: release-build-unix.sh:154-156 and
+# w2-smbc.sh:89-92 already require these exact bytes to answer
+# `version: <pinned smbc version>` on their own leg, and re-stating it would be
+# a second place for the same rule to live.
 {
-  printf 'nunchaku-bin --version: %s\n' "$(head -1 version.txt)"
-  printf 'smbc-bin --version: %s\n' "$(head -1 smbc-smoke-version.txt)"
+  printf 'nunchaku-bin --version: %s\n' "$nun_line"
+  printf 'smbc-bin --version: %s\n' "$smbc_line"
 } > "$PWD/versions-$ISA_PLATFORM.txt"
 echo "=== versions-$ISA_PLATFORM.txt ==="
 cat "$PWD/versions-$ISA_PLATFORM.txt"

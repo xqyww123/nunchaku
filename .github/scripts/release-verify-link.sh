@@ -18,11 +18,15 @@
 set -euo pipefail
 
 # LC_ALL=C, once, for the whole script.  readelf's output is TRANSLATED --
-# measured 2026-08-25 under zh_CN.UTF-8, where "Machine:" prints as
-# "系统架构:" and every English-text assertion below silently stops matching.
-# This is the same class the INTERP comment further down is about: assert on
-# names and structure, never on a tool's prose, and where prose is unavoidable
-# pin the locale that produces it.
+# measured 2026-08-25 under zh_CN.UTF-8, where "Machine:" prints as "系统架构:"
+# and "Type:" as "类型:".  Every assertion below that reads that output is in
+# POSITIVE form, so a translated locale does not make them pass silently: it
+# makes them FAIL.  Measured, same day, with this `export` deleted and
+# LC_ALL=zh_CN.UTF-8 set, on a genuine static x86-64 ELF -- rc=1,
+# `::error::... is not an ELF executable`.  A red leg whose diagnosis is a lie,
+# then, not a silent pass; that is the harm this line prevents.  (The one
+# absence assertion on that output, `! grep -q INTERP`, keys on a program-header
+# NAME, which is not translated -- see the comment where it stands.)
 export LC_ALL=C
 
 plat=${1:?Isabelle platform id}

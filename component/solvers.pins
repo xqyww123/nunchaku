@@ -3,10 +3,11 @@
 # Everything that says "which solver, which bytes" for a release lives here and
 # nowhere else.  Two repositories read this file:
 #
-#   * this fork's CI -- .github/scripts/solver-pins.sh is sourced by
-#     release-fetch-cvc5.sh, release-build-unix.sh, release-smoke.sh and
-#     release-attach.sh, and .github/workflows/main.yml exports the win-64 row
-#     into the PowerShell cvc5 step;
+#   * this fork's CI -- .github/scripts/solver-pins.sh is the one parser, and it
+#     is sourced by release-fetch-cvc5.sh, release-build-unix.sh, w2-smbc.sh and
+#     release-attach.sh, and by one `run:` block in
+#     .github/workflows/main.yml (the win-64 step that exports this file's
+#     x86_64-cygwin row into the PowerShell cvc5 steps);
 #   * isabelle-packaging-ci's conda/components/isabelle-nunchaku/recipe.yaml,
 #     which checks out this fork at the release tag and dies unless its own five
 #     `sha256:` literals, its cvc5/smbc versions and its subdir->platform table
@@ -30,7 +31,8 @@
 #   cvc5 <isabelle-platform> <release-asset-basename> <sha256-of-the-zip>
 #
 # The `cvc5` records are also the fork's definition of WHICH FIVE PLATFORMS a
-# release covers: the release-gate job builds its expected asset list from them.
+# release covers: the release-assets job builds its expected asset list from
+# them, and the download it checks for one artifact per platform as well.
 
 # cvc5 >= 1.3.1 is required: the backend sends get-model-domain-elements, which
 # older cvc5 answers with an error.

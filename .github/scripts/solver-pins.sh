@@ -5,8 +5,19 @@
 #
 #   . "$SRC_ROOT/.github/scripts/solver-pins.sh"
 #   ver=$(pin cvc5-version)                    # -> 1.3.4
-#   read -r asset sha <<< "$(pin cvc5 x86_64-linux)"
-#   pin_platforms                              # -> the five Isabelle platform ids
+#   row=$(pin cvc5 x86_64-linux)               # ASSIGN FIRST, then split:
+#   read -r asset sha <<< "$row"
+#   plats=$(pin_platforms)                     # -> the five Isabelle platform ids
+#
+# ASSIGN FIRST is not a style preference.  Both functions report a broken or
+# half-edited pins file by printing `::error::` and returning non-zero, and that
+# status only reaches `set -e` if a plain assignment takes it.  `read -r a b <<<
+# "$(pin ...)"` takes READ's status and `echo "X=$(pin ...)"` takes ECHO's, so
+# either one turns a loud failure into an empty value; measured 2026-08-25, the
+# win-64 pins step written that way exited 0 after writing `CVC5_VERSION=` into
+# $GITHUB_ENV and died 250 minutes later on a cvc5 URL 404.  The same applies to
+# `while read ... < <(pin_platforms)`: a process substitution's status is never
+# examined, so assign the list and iterate over the variable.
 #
 # Inputs:
 #   SRC_ROOT   the repository checkout (defaults to $PWD), or set PINS_FILE
@@ -37,5 +48,18 @@ pin () {  # <selector word>...  -- prints the record's remaining fields
 }
 
 pin_platforms () {  # the Isabelle platform ids a release covers, one per line
-  awk '$1 == "cvc5" { print $2 }' "$PINS_FILE"
+  local out
+  # An unreadable pins file and a pins file with no cvc5 records are the same
+  # kind of accident, and both are silent unless this returns non-zero: the
+  # release contract, the download list and the win-64 export are all built by
+  # iterating this, and an empty list agrees with every diff drawn against it.
+  out=$(awk '$1 == "cvc5" { print $2 }' "$PINS_FILE") || {
+    echo "::error::solver-pins.sh: cannot read $PINS_FILE" >&2
+    return 1
+  }
+  [ -n "$out" ] || {
+    echo "::error::solver-pins.sh: $PINS_FILE names no cvc5 platform records" >&2
+    return 1
+  }
+  printf '%s\n' "$out"
 }

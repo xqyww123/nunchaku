@@ -19,12 +19,19 @@ on:
   workflow_dispatch:
 
 concurrency:
-  # Two pushes in a row, or a re-run overlapping a run, otherwise race on
-  # `gh release upload --clobber` and on the actions/cache save reservations.
+  # What this group buys is ONE RUN PER REF, and nothing more.  It does not
+  # protect the release: `gh release create`/`upload` now run in a single
+  # tag-gated job (see release-assets below), and two runs that could both reach
+  # it would have to share a ref, i.e. be the same tag pushed twice -- which
+  # means deleting and re-pushing the tag, the thing RELEASE_CHECKLIST.md
+  # forbids.  Nor does it protect the caches: a duplicate actions/cache save is
+  # a warning, not a failure.
   group: ${{ github.workflow }}-${{ github.ref }}
-  # Never cancel a tag run: cancelling one mid-attach is exactly how a
-  # half-attached release happens.
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+  # Cancel only pull-request runs.  Every other event either costs a 300-minute
+  # win-64 leg that somebody is waiting on (the workflow_dispatch rehearsal,
+  # which shares this group with any push to main and was being cancelled by
+  # one) or must never be interrupted at all (a tag push).
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   run:
@@ -56,8 +63,10 @@ jobs:
   # and the smbc the component bundles from 0.5.3 on -- so TEN BINARIES, TEN
   # .sha256 SIDECARS and FIVE versions-<platform>.txt records: twenty-five
   # release assets.  The naming contract and the reasoning behind it live in
-  # .github/scripts/release-attach.sh, which every leg calls and which the
-  # release-gate job below also reads, so there is exactly one definition of it.
+  # .github/scripts/release-attach.sh.  These two job families do NOT touch the
+  # GitHub release: each leg uploads its three files as a run artifact, and the
+  # release-assets job below assembles, asserts and publishes all twenty-five in
+  # one place (release-attach.sh's header explains why that is not five places).
   #
   # WHICH SOLVERS, WHICH BYTES: component/solvers.pins, read by every script
   # here and by isabelle-packaging-ci's recipe.  Nothing in this file restates a
@@ -74,6 +83,16 @@ jobs:
   # lib/scripts/isabelle-platform.  macos-15-intel, not macos-13: the macos-13
   # label is retired and those legs queue forever without ever being scheduled.)
   #
+  # BASH 3.2 ON THE TWO macOS LEGS.  Apple's /bin/bash is 3.2, so every script
+  # these legs run -- release-build-unix.sh, release-verify-link.sh,
+  # release-fetch-cvc5.sh, release-smoke.sh and the solver-pins.sh they source
+  # -- must avoid `mapfile`/`readarray`, `declare -A` and `${x,,}`/`${x^^}`.
+  # `mapfile` in particular does not merely error there: the array stays empty
+  # and the loop over it does nothing, so a step whose whole job is to enumerate
+  # files goes green having enumerated none.  `grep -rnE
+  # 'mapfile|readarray|declare -A|\$\{[A-Za-z_]+(,,|\^\^)\}'` over .github/
+  # must stay empty apart from this paragraph.
+  #
   # WHY TWO JOBS rather than one five-way matrix.  The four unix legs share
   # every step and differ only in matrix fields, so they are one matrix.  win-64
   # is a different toolchain end to end -- Isabelle's bundled Cygwin brought up
@@ -85,7 +104,7 @@ jobs:
   # ---------------------------------------------------------------------------
   release-binary:
     name: "release ${{ matrix.target.isa_platform }} (nunchaku + smbc) + CLI smoke"
-    needs: run   # never attach a release asset from a tree whose test matrix is red
+    needs: run   # never publish a binary from a tree whose test matrix is red
     # Every push to main, and every manual dispatch, but not pull requests: a PR
     # is already gated by `run` (the three-compiler build+test matrix), which is
     # the actual correctness gate, and making every PR wait on a leg budgeted at
@@ -95,7 +114,9 @@ jobs:
     timeout-minutes: 90
     runs-on: ${{ matrix.target.runner }}
     permissions:
-      contents: write   # for the tag-push GitHub release below
+      # read only: this family no longer writes to the GitHub release.  Only
+      # release-assets does, and only on a tag.
+      contents: read
     strategy:
       # One platform's failure must not hide the others': with fail-fast a
       # single red leg would leave the remaining four unmeasured, and the
@@ -201,12 +222,6 @@ jobs:
           # the second pass ("an artifact for the given name already exists").
           overwrite: true
 
-      - name: Attach binaries to the GitHub release (tag pushes only)
-        if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: .github/scripts/release-attach.sh
-
   release-binary-win:
     name: "release x86_64-cygwin (nunchaku + smbc) + CLI smoke"
     needs: run
@@ -217,7 +232,7 @@ jobs:
     timeout-minutes: 300
     runs-on: windows-latest
     permissions:
-      contents: write
+      contents: read   # see release-binary above
     env:
       ISA_PLATFORM: x86_64-cygwin
     steps:
@@ -259,13 +274,21 @@ jobs:
         run: |
           set -euo pipefail
           . .github/scripts/solver-pins.sh
-          read -r asset sha <<< "$(pin cvc5 x86_64-cygwin)"
+          # ASSIGN, then use.  `read -r a b <<< "$(pin ...)"` takes read's exit
+          # status and `echo "X=$(pin ...)"` takes echo's, so `set -e` never
+          # sees pin's failure: measured 2026-08-25, this step written that way
+          # exited 0 after writing `CVC5_VERSION=` into $GITHUB_ENV, and the leg
+          # then died ~250 minutes later on a cvc5 URL 404 whose diagnosis named
+          # cvc5 rather than the pins edit that caused it.
+          version=$(pin cvc5-version)
+          row=$(pin cvc5 x86_64-cygwin)
+          read -r asset sha <<< "$row"
           {
-            echo "CVC5_VERSION=$(pin cvc5-version)"
+            echo "CVC5_VERSION=$version"
             echo "CVC5_ASSET=$asset"
             echo "CVC5_SHA256=$sha"
           } >> "$GITHUB_ENV"
-          echo "cvc5 $(pin cvc5-version) / $asset / $sha"
+          echo "cvc5 $version / $asset / $sha"
 
       - name: Restore cached Isabelle installer
         id: isaexe
@@ -386,13 +409,16 @@ jobs:
           # sanity must name /usr/bin paths: the runner's Windows PATH (mingw
           # gcc, Strawberry patch, Git unzip, Git git) leaks into cygwin shells
           # and can satisfy a bare "command -v" spuriously (measured)
-          # install, tr, od and file come from the SHARED scripts this leg runs
-          # (release-smoke.sh stages the component with `install -m 755` and
-          # normalises stderr with `tr`; release-verify-link.sh reads the PE
-          # header with `od` and prints `file` output), and cygcheck from
-          # release-verify-link.sh's cygwin branch.  Listing them here turns a
-          # missing tool into a one-line diagnosis at minute five instead of a
-          # confusing failure at minute two hundred and fifty.
+          # install, tr, od, file and cygcheck come from the shared and the
+          # win-64-only scripts this leg runs: release-smoke.sh stages the
+          # component with `install -m 755` and normalises stderr with `tr`;
+          # release-verify-link.sh's *-cygwin branch calls `cygcheck` and reads
+          # the PE header with `od` (it never calls `file` -- that is only in
+          # the *-linux branch, which this leg does not reach); `file` is used
+          # by w2-build.sh and w2-smbc.sh, both of which run under `set -e`.
+          # Listing them here turns a missing tool into a one-line diagnosis at
+          # minute five instead of a confusing failure at minute two hundred
+          # and fifty.
           & $env:BASH_EXE --login -c 'set -e; for t in opam gcc make m4 patch unzip git strip install tr od file cygcheck; do test -x /usr/bin/$t || { echo "MISSING /usr/bin/$t"; exit 1; }; done; /usr/bin/opam --version; /usr/bin/gcc --version | head -1; /usr/bin/git --version'
           exit $LASTEXITCODE
 
@@ -504,66 +530,58 @@ jobs:
           retention-days: 90
           overwrite: true   # see the unix leg's upload
 
-      - name: Attach binaries to the GitHub release (tag pushes only)
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: .github/scripts/release-attach.sh
-
   # ---------------------------------------------------------------------------
-  # The release gate.  Every leg creates the release as a DRAFT and attaches its
-  # own five files; nothing until now asserts that all five legs arrived.  With
-  # fail-fast off and win-64 in its own job, the previous shape published a LIVE
-  # v<version> from whichever leg finished first -- a tag push would have
-  # announced a release carrying two of the ten binaries.
+  # The release assets.  The five build legs upload their three files as run
+  # artifacts and touch nothing else; this job turns those artifacts into the
+  # twenty-five contracted release assets, asserts that it got exactly them, and
+  # -- on a tag push only -- creates the release, uploads, re-asserts and takes
+  # it out of draft.  The asset contract, and why creation lives here rather
+  # than in five racing legs, are in .github/scripts/release-attach.sh.
+  #
+  # THE COLLECT STEP IS NOT TAG-GATED, deliberately.  It is pure local logic --
+  # five artifacts in, twenty-five named files out -- so a workflow_dispatch
+  # rehearsal executes the whole contract, including "all five legs arrived",
+  # before any tag exists.  Only `publish` needs a tag and a release object, and
+  # only `publish` is gated.  RELEASE_CHECKLIST.md section 9 step 1 records
+  # exactly what a rehearsal therefore still cannot reach.
   #
   # Ordering note for whoever dispatches the packaging repository: a DRAFT
   # release is not served at https://github.com/.../releases/download/<tag>/...,
   # which is exactly the URL isabelle-packaging-ci's release-nunchaku.yml
-  # fetches.  So this job's `--draft=false` is load-bearing: packaging must not
-  # be dispatched until it has run.  Written down in RELEASE_CHECKLIST.md
-  # section 9 as well, which is where the dispatcher will actually be looking.
+  # fetches.  So the un-draft at the end of `publish` is load-bearing: packaging
+  # must not be dispatched until this job is green.  Written down in
+  # RELEASE_CHECKLIST.md section 9 as well, which is where the dispatcher will
+  # actually be looking.
   # ---------------------------------------------------------------------------
-  release-gate:
-    name: "release gate (all five platforms attached, then un-draft)"
+  release-assets:
+    name: "release assets (all five platforms, then publish)"
     needs: [release-binary, release-binary-win]
-    if: startsWith(github.ref, 'refs/tags/v')
+    # No tag guard: see above.  `needs:` alone already keeps this job away from
+    # pull requests, where both build families are skipped.
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write   # the only job in this workflow that writes a release
     steps:
       - uses: actions/checkout@v4
-      - name: Assert the full asset contract, then publish
+
+      - uses: actions/download-artifact@v4
+        with:
+          # One directory per leg, named nunchaku-<isabelle-platform> by the two
+          # upload steps above.  release-attach.sh looks for exactly the five
+          # component/solvers.pins names, so a leg that vanished is a red job
+          # here rather than a four-fifths release.
+          pattern: nunchaku-*
+          path: dl
+
+      - name: Assemble and assert the twenty-five release assets
+        run: .github/scripts/release-attach.sh collect dl
+
+      - name: Create the release, upload, assert the contract, publish
+        if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          . .github/scripts/solver-pins.sh
-          # Expected set built from the SAME two definitions the legs used: the
-          # platform list in component/solvers.pins and the name list in
-          # release-attach.sh.  Nothing here restates a filename.
-          : > expected.txt
-          while IFS= read -r plat; do
-            .github/scripts/release-attach.sh --list "$plat" >> expected.txt
-          done < <(pin_platforms)
-          sort -o expected.txt expected.txt
-          n=$(wc -l < expected.txt)
-          echo "the contract names $n files:"; cat expected.txt
-
-          gh release view "$GITHUB_REF_NAME" --json assets \
-            --jq '.assets[].name' | sort > actual.txt
-          echo "the release carries $(wc -l < actual.txt):"; cat actual.txt
-
-          if ! diff -u expected.txt actual.txt > assets.diff; then
-            echo "::error::the release does not carry exactly the contracted files"
-            cat assets.diff
-            exit 1
-          fi
-
-          # Only now does v<version> become visible to the packaging repository.
-          gh release edit "$GITHUB_REF_NAME" --draft=false
-          echo "$GITHUB_REF_NAME: $n assets asserted, release taken out of draft"
+        run: .github/scripts/release-attach.sh publish
 
   benchmark:
     name: benchmark
