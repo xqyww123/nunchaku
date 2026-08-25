@@ -151,7 +151,8 @@ module Res = struct
   type unknown_info =
     | U_timeout of info
     | U_out_of_scope of info
-    | U_incomplete of info
+    | U_incomplete of info (* models were lost: an "unsat" would claim nothing *)
+    | U_potentially_spurious of info * string (* a model was found, but it may not be one *)
     | U_other of info * string
     | U_backend_error of info * string
 
@@ -193,7 +194,8 @@ module Res = struct
     | U_timeout i -> fpf out "TIMEOUT %a" pp_info i
     | U_out_of_scope i -> fpf out "OUT_OF_SCOPE %a" pp_info i
     | U_incomplete i -> fpf out "INCOMPLETE %a" pp_info i
-    | U_other (i,s) -> fpf out "INCOMPLETE %a %s" pp_info i s
+    | U_potentially_spurious (i,s) -> fpf out "POTENTIALLY_SPURIOUS %a %s" pp_info i s
+    | U_other (i,s) -> fpf out "OTHER %a %s" pp_info i s
     | U_backend_error (i,s) -> fpf out "BACKEND_ERROR %a %s" pp_info i s
 
   let pp_info_opt out = function

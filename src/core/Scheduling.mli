@@ -104,8 +104,13 @@ module Task : sig
   (** [of_fut f] is similar to {!make}, but [f] produces a future, not a direct
       result *)
 
+  val map_res : f:('a * shortcut -> 'b * shortcut) -> 'a t -> 'b t
+  (** Map the result {b and} the shortcut it asked for: post-processing
+      that finds the answer inconclusive can withhold the shortcut, so
+      that the other tasks keep running *)
+
   val map : f:('a -> 'b) -> 'a t -> 'b t
-  (** Map the result *)
+  (** Map the result, keeping the shortcut *)
 end
 
 type 'a run_result =

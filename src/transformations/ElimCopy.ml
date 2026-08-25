@@ -200,9 +200,10 @@ let copy_quotient_as_uninterpreted_ty state ~info ~tty ~(rel:term) c : (_, _) St
     (fun k -> k ID.pp id_c incomplete);
   if incomplete then (
     TyTbl.add state.incomplete_types ty_c ();
-    (* without [ax_defined] below, [concrete] is underconstrained on the
-       abstract type's image: a backend can pick an interpretation under
-       which the copied operations misevaluate, i.e. models may be
+    (* without [ax_defined] below, [abstract] is pinned only on the image of
+       [concrete] (one representative per class); on any other [c] it may
+       land in a class unrelated to [c], so an operation copied through
+       [abstract o raw o concrete] misevaluates there and models may be
        spurious (witnessed: smbc "refuting" [(a:int) * a >= a] with a=0
        through Isabelle's nat-pair quotient encoding of int) *)
     state.sat_means_unknown <- true;

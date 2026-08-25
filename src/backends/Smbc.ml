@@ -877,23 +877,16 @@ let convert_model ~env (m:A_res.model): (_,_) Model.t =
          Model.add_value m (a,b,k))
     Model.empty m
 
-let convert_res ~env ~info ~meta (res:A_res.t): (_,_) Res.t * S.shortcut = match res with
+(* the problem metadata is merged into the answer by [Mark_spurious], the
+   stage [close_task] composes for every backend; do not do it here *)
+let convert_res ~env ~info (res:A_res.t): (_,_) Res.t * S.shortcut = match res with
   | A_res.Timeout -> Res.Unknown [Res.U_timeout info], S.No_shortcut
   | A_res.Unknown s -> Res.Unknown [Res.U_other (info,s)], S.No_shortcut
-  | A_res.Unsat when meta.ProblemMetadata.unsat_means_unknown ->
-    Res.Unknown [Res.U_incomplete info], S.No_shortcut
   | A_res.Unsat -> Res.Unsat info, S.Shortcut
-  | A_res.Sat m ->
-    let m = convert_model ~env m in
-    (* the encoding pipeline may know that models cannot be trusted
-       (e.g. an incomplete quotient encoding); surface that on the model *)
-    let m = {m with Model.potentially_spurious =
-                      m.Model.potentially_spurious
-                      || meta.ProblemMetadata.sat_means_unknown} in
-    Res.Sat (m,info), S.Shortcut
+  | A_res.Sat m -> Res.Sat (convert_model ~env m, info), S.Shortcut
 
 (* parse [stdout, errcode] into a proper result *)
-let parse_res ~env ~info ~meta (out:string) (errcode:int): (term,ty) Res.t * S.shortcut =
+let parse_res ~env ~info (out:string) (errcode:int): (term,ty) Res.t * S.shortcut =
   if errcode<>0
   then
     let msg = Printf.sprintf "smbc failed with errcode %d, output:\n`%s`" errcode out in
@@ -903,7 +896,7 @@ let parse_res ~env ~info ~meta (out:string) (errcode:int): (term,ty) Res.t * S.s
       let lexbuf = Lexing.from_string out in
       Location.set_file lexbuf "<output of smbc>";
       let res = Tip_parser.parse_smbc_res Tip_lexer.token lexbuf in
-      convert_res ~env ~info ~meta res
+      convert_res ~env ~info res
     with e ->
       Res.Error (e,info), S.Shortcut
   )
@@ -955,7 +948,7 @@ let solve ~deadline pb =
           let info = mk_info() in
           (* need environment to re-infer some types *)
           let env = Problem.env pb in
-          parse_res ~env ~info ~meta:(Problem.metadata pb) stdout errcode
+          parse_res ~env ~info stdout errcode
         | S.Fut.Done (E.Error e) ->
           let info = mk_info() in
           Res.Error (e,info), S.Shortcut

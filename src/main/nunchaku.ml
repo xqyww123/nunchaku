@@ -97,10 +97,11 @@ let kodkod_bound_increment_ = ref Backends.Kodkod.default_size_increment
 let timeout_ = ref 30.
 let version_ = ref false
 let dump_ : [`No | `Yes | `Into of string] ref = ref `No
-(* report UNKNOWN instead of a potentially spurious model: for consumers
-   that classify on the first output token and never see the
-   "(potentially spurious)" marker *)
-let no_spurious_models_ = ref false
+(* report UNKNOWN instead of a potentially spurious model.  On by default:
+   a consumer that classifies on the first output token (the Isabelle
+   frontend does) never sees the "(potentially spurious)" marker and would
+   take the model for a genuine countermodel *)
+let no_spurious_models_ = ref true
 let file = ref ""
 (* [None] = the default (all solvers); [Some l] = an explicit --solvers *)
 let solvers : solver list option ref = ref None
@@ -149,8 +150,11 @@ let call_with x f = Arg.Unit (fun () -> f x)
 let options =
   Arg.align @@ List.sort Stdlib.compare @@ (
     Utils.Options.get_all () @
-      [ "--no-spurious-models", Arg.Set no_spurious_models_,
-        " report UNKNOWN instead of a potentially spurious model"
+      [ "--allow-spurious-models", Arg.Clear no_spurious_models_,
+        " print potentially spurious models instead of reporting UNKNOWN"
+      ; "--no-spurious-models", Arg.Set no_spurious_models_,
+        " report UNKNOWN instead of a potentially spurious model (the default; \
+         kept because every shipped wrapper passes it)"
       ; "--pp-input", Arg.Set pp_, " print input"
       ; "--pp-all", Arg.Set pp_all_, " print every step of the pipeline"
       ; "--pp-pipeline", Arg.Set pp_pipeline_, " print full pipeline and exit"
@@ -316,10 +320,12 @@ module Pipes = struct
   module Step_tofo = Tr.Trans_ho_fo.Make(HO)
 end
 
-let close_task p =
-  Transform.Pipe.close p
-    ~f:(fun task ret ->
-      Scheduling.Task.map ~f:ret task, CCFun.id)
+(* The one closer of a pipeline, and with it the one home of the
+   spurious-model policy, lives in its own module: a rule in this directory's
+   [dune] file then checks that this file never closes a pipeline itself,
+   which it easily could -- every pipeline builder below opens
+   [Transform.Pipe], where the unqualified spelling compiles. *)
+let close_task = Close_task.close_task
 
 (* get a file name prefix for "--dump", or [None] if "--dump" was not specified *)
 let get_dump_file () = match !dump_ with
@@ -588,26 +594,27 @@ let make_model_pipeline () =
 
 let process_res_ r =
   let module Res = Problem.Res in
-  (* [l] only contains unknown-like results (+timeout+out_of_scope),
-     id recover accurate info *)
+  (* [l] only contains unknown-like results (+timeout+out_of_scope), to
+     recover accurate info: [close_task] grants a shortcut to every
+     conclusive answer, so a task that did not end the race is [Unknown].
+     Enforced here, loudly and by name -- a violation used to reach the
+     user as a bare `Assertion failed`. *)
   let find_result_if_unknown l =
     let l =
-      CCList.flat_map (function Res.Unknown l -> l | _ -> assert false) l
+      CCList.flat_map
+        (function
+          | Res.Unknown l -> l
+          | r ->
+            Utils.failwithf
+              "@[<2>task reported `%a`@ without ending the race@]" Res.pp_head r)
+        l
     in
     Res.Unknown l
   in
   match r with
     | Scheduling.Res_fail e -> E.fail (Printexc.to_string e)
     | Scheduling.Res_list [] -> E.fail "no task succeeded"
-    | Scheduling.Res_list l ->
-      assert
-        (List.for_all
-           (function
-             | Res.Unknown _ -> true
-             | Res.Error _ | Res.Sat _ | Res.Unsat _ -> false)
-           l);
-      let res = find_result_if_unknown l in
-      E.return res
+    | Scheduling.Res_list l -> E.return (find_result_if_unknown l)
     | Scheduling.Res_one r -> E.return r
 
 (* run the pipeline on this problem, then run tasks, and return the
@@ -666,7 +673,9 @@ let main_model ~output statements =
   >|= fun res ->
   let res = match res with
     | Res.Sat (m, i) when m.Model.potentially_spurious && !no_spurious_models_ ->
-      Res.Unknown [Res.U_other (i, "potentially spurious model suppressed (--no-spurious-models)")]
+      Res.Unknown
+        [Res.U_potentially_spurious
+           (i, "model suppressed; re-run with --allow-spurious-models to see it")]
     | r -> r
   in
   match res, output with

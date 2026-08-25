@@ -17,6 +17,21 @@
        (echo "\"  let id = String.trim id_")
       ))))
 
+; [Close_task] must stay the only place that closes a pipeline into a task:
+; any other closer would build a task with no [Mark_spurious] stage and no
+; shortcut check, and the whole "one home for the policy" argument with it.
+; [Transform] belongs to the [core] library and cannot hide the function from
+; its users, so a grep is the enforcement.  The pattern matches the qualified
+; and the unqualified spelling -- nunchaku.ml opens [Transform.Pipe] in every
+; pipeline builder, so the unqualified one compiles there -- and it matches
+; the identifier anywhere in the file, prose included: do not spell it bare
+; in a comment in these two files.
+(rule
+  (alias runtest)
+  (deps nunchaku.ml Close_task.ml)
+  (action
+    (bash "re='(Pipe\\.close)|(^|[^A-Za-z0-9_.])close([^A-Za-z0-9_]|$)'; n_main=$(grep -cE \"$re\" nunchaku.ml || true); n_ct=$(grep -cE \"$re\" Close_task.ml || true); test \"$n_main\" = 0 && test \"$n_ct\" = 1 || { echo \"the pipeline closer must appear once in Close_task.ml (found $n_ct) and never in nunchaku.ml (found $n_main)\" >&2; exit 1; }")))
+
 ; main binary
 (executable
   (name nunchaku)

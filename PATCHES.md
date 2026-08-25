@@ -1,9 +1,9 @@
 # Patches this fork carries
 
-Policy: PR-first.  Every patch is submitted upstream
-(`nunchaku-inria/nunchaku`); the fork only keeps carrying what upstream
-declines or leaves unhandled, and a merged patch is dropped from this list
-at the next sync.  Base commit: d23a876.
+Policy: the fork no longer upstreams.  The submissions to
+`nunchaku-inria/nunchaku` were withdrawn, so this file is the only record
+of what the fork carries and why; it is written to be readable by someone
+who has never seen the upstream repository.  Base commit: d23a876.
 
 ## 1. Fractional `--timeout` (`a1828aa`)
 
@@ -16,7 +16,6 @@ at the next sync.  Base commit: d23a876.
 - **Repro**: `nunchaku --solvers smbc --timeout 0.7 <any sat problem>`;
   before: `wrong argument '0.7'`; after: SAT in milliseconds.  Integer
   arguments behave as before.
-- **Upstream PR**: https://github.com/nunchaku-inria/nunchaku/pull/56 (open).
 
 ## 2. String literals in the sexp lexer (`930d1c7`)
 
@@ -29,7 +28,6 @@ at the next sync.  Base commit: d23a876.
   `get-model-domain-elements`) on a problem with datatypes; before:
   `lexer error ... lexing failed on char "`; after: a clean
   `expected model` error.
-- **Upstream PR**: https://github.com/nunchaku-inria/nunchaku/pull/57 (open).
 
 ## 3. `NUNCHAKU_CVC5` / `NUNCHAKU_SMBC`; loud unavailable-solver handling (`c63de1b`)
 
@@ -51,7 +49,6 @@ at the next sync.  Base commit: d23a876.
   literal hard-fail semantics would kill every stock invocation.  Warnings
   plus the existing all-unavailable failure keep the intent (a broken
   installation is visible) without breaking stock users.
-- **Upstream PR**: https://github.com/nunchaku-inria/nunchaku/pull/58 (open).
 
 ## 4. Parseable identities for smbc model unknowns (`8719aca`)
 
@@ -84,7 +81,6 @@ at the next sync.  Base commit: d23a876.
   match scrutinees recovered from branch constructors, and repeated
   unknowns sharing one `?__<n>` (the erase-table lookup preceded the `?`
   test, a pre-existing upstream defect).
-- **Upstream PR**: https://github.com/nunchaku-inria/nunchaku/pull/59 (open).
 
 
 ## 5. `--version` placeholder never expanded (`src/main/dune`)
@@ -97,7 +93,6 @@ at the next sync.  Base commit: d23a876.
 - **Repro**: `nunchaku --version`; before:
   `nunchaku ${version:nunchaku} <sha>`; after: `nunchaku 0.6 <sha>`
   (dev checkout) / the tag version (released build, via `dune subst`).
-- **Upstream PR**: https://github.com/nunchaku-inria/nunchaku/pull/60 (open).
 
 ## 6. Spurious-model soundness for incomplete copy encodings
 
@@ -124,4 +119,104 @@ at the next sync.  Base commit: d23a876.
   `--solvers smbc`; before: `SAT: { val a_ := Abs_Integ_ (Pair_ (Suc_
   zero_) (Suc_ zero_)). }` reported as a genuine countermodel; after:
   `SAT: (potentially spurious)` by default, `UNKNOWN` under the flag.
-- **Upstream PR**: https://github.com/nunchaku-inria/nunchaku/pull/61 (open).
+- **Superseded in part by §7**, which is where this patch's shape lives
+  today: the marking left the smbc backend for one pipeline stage that every
+  backend goes through, and suppression became the default -- so the repro
+  above now ends the other way round, `UNKNOWN` by default and
+  `SAT: (potentially spurious)` under `--allow-spurious-models`.  What
+  survives here unchanged is where it all starts: `ElimCopy` setting
+  `sat_means_unknown` on an incomplete copy encoding.
+
+## 7. One home for the spurious-model policy (soundness batch)
+
+- **Motivation**: patch 6 marked models, but only in the smbc backend, and
+  only the marking.  Three holes remained.  (i) The mark was per-backend:
+  cvc5 and kodkod never set it, so on the eight real Isabelle goals that
+  carry `sat_means_unknown` (all `int` goals: `l3 l6 n1 n2 n4 n6 e7`
+  of `regress/bench.ML`, `b3` of `bench2.ML`) whichever backend won the
+  race decided whether the answer was marked -- measured on the captured
+  frontend problems, `--solvers cvc5,kodkod` returned a bare `SAT` on
+  `n4` and `b3` even with `--no-spurious-models` on, which the Isabelle
+  frontend (`nunchaku_tool.ML`, `String.isPrefix "SAT"`) files as a
+  genuine countermodel.  (ii) The `unsat_means_unknown` rewrite was
+  copy-pasted into four backends and missing from the fifth: `Kodkod.ml`
+  never mentions the metadata at all, so an `unsat` from kodkod on a
+  problem whose encoding lost models was reported as a refutation.
+  (iii) Suppression was off by default, so the safety of every published
+  binary rested on one line of one bash wrapper that is not shipped with
+  it.
+- **Fix**: a new transformation `Mark_spurious` (`src/transformations/`)
+  captures the problem metadata at encode and rewrites the result at
+  decode -- `sat_means_unknown` marks the model `potentially_spurious`,
+  `unsat_means_unknown` turns `Unsat` into `Unknown [U_incomplete]`.
+  `close_task` (`src/main/Close_task.ml`) composes it itself, so no branch
+  of the pipeline can omit it and no backend has to remember it; the four
+  per-backend `unsat` guards and smbc's model-marking merge are deleted.
+  Two properties make that site the only correct one: the stage runs
+  after the whole decode chain, so kodkod's model -- rebuilt from
+  `Model.empty` by `FoToRelational` -- still gets the mark; and
+  `Kodkod.ml` stays untouched, which matters because its bound-increment
+  loop re-matches on `Res.Unsat` and would silently stop growing the
+  bound if `solve` started returning `Unknown`.  Closing a pipeline is what
+  builds a task, so a second closer anywhere would be a second policy: the
+  closer therefore lives alone in `Close_task.ml`, and a `dune runtest` rule
+  requires it to appear there exactly once and in `nunchaku.ml` never --
+  which is a grep because `Transform` lives in the `core` library and cannot
+  hide a value from its own users, and it looks for the unqualified spelling
+  too, since every pipeline builder in `nunchaku.ml` opens `Transform.Pipe`.
+- **Shortcut demotion, and its limits**: a task's post-processing now
+  decides the result and the scheduler's shortcut together
+  (`Scheduling.Task.post` takes and returns the pair; `Task.map` is
+  preserved as the shortcut-keeping special case of the new
+  `Task.map_res`).  A rewritten `unsat` no longer ends the race, so a
+  sibling backend may still conclude -- not hypothetical: `e3` and `e6`
+  carry `unsat_means_unknown` in the cvc5/kodkod encoding branch and not
+  in the smbc one.  Deliberately *not* demoted: a potentially spurious
+  `Sat` (`sat_means_unknown` is a property of the problem, so every
+  sibling's `Sat` would be marked too; measured price of demoting it is
+  the caller's whole timeout budget on 4 of 6 marked goals, with no
+  verdict change in 12 of 12 paired runs), and an `Error` (it would put
+  a non-`Unknown` into the scheduler's result list, which `process_res_`
+  rejects).  The rule at that one point runs both ways: an `unknown` never
+  keeps a shortcut, and only an `unknown` can lose one.  The first half is
+  wider than the rewrite that motivates it -- a backend that asked to
+  shortcut on an `unknown` is overruled without being told.  No backend does
+  that today (every `unknown` any of them returns already carries
+  `No_shortcut`), and an inconclusive answer has no business ending the race
+  whoever asked for it, which is why the rule is stated where it is enforced
+  rather than left to five backends to observe.
+- **The two directions are deliberately asymmetric.**  A suppressed model
+  can be seen again with `--allow-spurious-models`; an `unsat` under
+  `unsat_means_unknown` becomes `UNKNOWN` unconditionally, with no switch to
+  get the original answer back.  That is soundness first, and a decision
+  rather than an oversight: a potentially spurious model is still an object
+  a user can inspect and judge, whereas the answer being withheld in the
+  other direction is the bare word `unsat`, which carries nothing to judge.
+  If symmetry is ever wanted, it is a new flag, not a bug fix.
+- **Reporting**: new `Res.U_potentially_spurious`, printed
+  `POTENTIALLY_SPURIOUS`, replaces the `U_other` the suppression used to
+  emit -- the two soundness directions are now distinguishable by tag
+  (`INCOMPLETE` = models were lost, so an `unsat` claims nothing;
+  `POTENTIALLY_SPURIOUS` = a model was found but may not be one).
+  `U_other` itself now prints `OTHER` instead of `INCOMPLETE`, which it
+  never was (it carries the `--dump` paths and smbc's own "unknown").
+  Suppression stays where it was, before the `-o sexp` / `-o tptp`
+  dispatch, so those inherit it.
+- **Flag family**: `--no-spurious-models` is now the default and is kept
+  as an accepted no-op (an unknown option exits 2, and every shipped
+  wrapper passes it); `--allow-spurious-models` is the way back to a
+  printed model.  The component wrapper keeps passing the old flag on
+  purpose, so the component does not depend on the binary's default.
+- **Also here**: the comment explaining why `ElimCopy` sets
+  `sat_means_unknown` was wrong in both halves (it named `concrete` as
+  the loose function and the abstract type's image as the loose region);
+  it now says that `abstract` is pinned only on the image of `concrete`
+  and may land in an unrelated class anywhere else.  The two `assert`s in
+  `process_res_` became one `Utils.failwithf` naming the offending
+  constructor, since that invariant is now enforced by `close_task` and a
+  violation used to reach the user as a bare `Assertion failed`.
+- **Repro**: captured frontend problem for `n4`,
+  `--solvers cvc5,kodkod --timeout 5`; before: `SAT: ...` (unmarked, with
+  the wrapper's flag on); after: `UNKNOWN (POTENTIALLY_SPURIOUS ...)`, and
+  `SAT: (potentially spurious) {...}` under `--allow-spurious-models`.
+  Unaffected: `regress/gold.nun` still prints an unmarked `SAT: {`.

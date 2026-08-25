@@ -283,11 +283,12 @@ module Task = struct
     prio: int; (* priority. The lower, the more urgent *)
     slice: float; (* fraction of time allotted to the task *)
     f: (deadline:float -> unit -> ('a * shortcut) Fut.t);
-    post: ('a -> 'res);
+    post: ('a * shortcut -> 'res * shortcut);
   }
   (** Task consisting in running [f arg], obtaining a result. After [f]
-      returns, [post] is applied to the result to obtain a value
-      of type ['res] *)
+      returns, [post] is applied to the result and to the shortcut [f]
+      asked for, to obtain a value of type ['res] and the shortcut that
+      is actually granted *)
 
   type 'res t =
     | Task : ('a, 'res) inner -> 'res t
@@ -305,8 +306,10 @@ module Task = struct
 
   let compare_prio (Task t1) (Task t2) = Stdlib.compare t1.prio t2.prio
 
-  let map ~f (Task t_i) =
+  let map_res ~f (Task t_i) =
     Task {t_i with post=(fun x -> f (t_i.post x)); }
+
+  let map ~f t = map_res t ~f:(fun (x, sc) -> f x, sc)
 end
 
 (* task currently running *)
@@ -374,19 +377,15 @@ let start_task p t =
         ~f:(fun () ->
           p.active <- remove_rtask_ id p.active;
           begin match res, p.pool_state with
-            | Fut.Done (x, No_shortcut), Res_list l ->
+            | Fut.Done (x, short), Res_list l ->
               begin
                 try
-                  let y = t_inner.Task.post x in
-                  p.pool_state <- Res_list (y::l)
-                with e ->
-                  p.pool_state <- Res_fail e
-              end
-            | Fut.Done (x, Shortcut), Res_list _ ->
-              begin
-                try
-                  let y = t_inner.Task.post x in
-                  p.pool_state <- Res_one y
+                  (* [post] decides the result and the shortcut together:
+                     it may withhold the shortcut the task asked for *)
+                  begin match t_inner.Task.post (x, short) with
+                    | y, No_shortcut -> p.pool_state <- Res_list (y::l)
+                    | y, Shortcut -> p.pool_state <- Res_one y
+                  end
                 with e ->
                   p.pool_state <- Res_fail e
               end
@@ -476,6 +475,14 @@ let run ~j ~deadline tasks =
   (Res_fail Exit) ( \
     let mk i = Task.make (fun ~deadline:_ () -> if i=5 then raise Exit else i, No_shortcut) in \
     run ~j:3 ~deadline:5. CCList.(1 -- 10 |> map mk))
+*)
+
+(* a [post] that withholds the shortcut must not end the race *)
+(*$=
+  (Res_list [42]) ( \
+    let t = Task.make (fun ~deadline:_ () -> 42, Shortcut) \
+      |> Task.map_res ~f:(fun (x,_) -> x, No_shortcut) in \
+    run ~j:1 ~deadline:5. [t])
 *)
 
 (*$=

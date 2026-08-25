@@ -77,12 +77,12 @@ let parse_res ~info ~meta s =
   if CCString.mem ~sub:"SZS status Timeout" s
   then Res.Unknown [Res.U_timeout info], S.No_shortcut
   else if CCString.mem ~sub:"RESULT: Unsatisfiable" s
-  then if meta.ProblemMetadata.unsat_means_unknown
-    then Res.Unknown [Res.U_incomplete info], S.No_shortcut
-    else Res.Unsat info, S.Shortcut
+  then Res.Unsat info, S.Shortcut
   else if CCString.mem ~sub:begin_model s
+  (* the model itself is skipped, not only marked: on these problems
+     [parse_model] fails by raising, and a raise kills the whole pool *)
   then if meta.ProblemMetadata.sat_means_unknown
-    then Res.Unknown [Res.U_timeout info], S.No_shortcut
+    then Res.Unknown [Res.U_potentially_spurious (info, "")], S.No_shortcut
     else
       let m = parse_model s in
       Res.Sat (m,info), S.Shortcut

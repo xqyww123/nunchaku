@@ -848,11 +848,7 @@ let solve ?(options="") ?deadline ?(print=false) ?(print_model=false) pb =
         close s;
         match r with
           | Res.Sat (_,_) -> r, S.Shortcut
-          | Res.Unsat i ->
-            (* beware, this "unsat" might be wrong *)
-            if pb.FO.Problem.meta.ProblemMetadata.unsat_means_unknown
-            then Res.Unknown [Res.U_incomplete i], S.No_shortcut
-            else Res.Unsat i, S.Shortcut
+          | Res.Unsat i -> Res.Unsat i, S.Shortcut
           | Res.Unknown _ -> r, S.No_shortcut
           | Res.Error (e,_) ->
             Utils.debugf ~lock:true ~section 1

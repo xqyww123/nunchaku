@@ -128,7 +128,8 @@ module Res : sig
   type unknown_info =
     | U_timeout of info
     | U_out_of_scope of info
-    | U_incomplete of info
+    | U_incomplete of info (* models were lost: an "unsat" would claim nothing *)
+    | U_potentially_spurious of info * string (* a model was found, but it may not be one *)
     | U_other of info * string
     | U_backend_error of info * string
 
