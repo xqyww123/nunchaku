@@ -951,6 +951,24 @@ shape the model parser had never seen (§16 covers it), and part of the
 verdict drift recorded in `regress/README.md` §4 is the solver change rather
 than any patch in this file.
 
+**A dependency worth stating next to §20's "the component pins every solver it
+ships": on some goals nunchaku's soundness rests on an assertion inside that
+third-party binary.**  `Smbc.ml` invokes smbc with `--check`, and smbc's
+`--check` gates `Top_goals.check ()`, which is `assert false` when the model it
+has just found does not satisfy the problem.  smbc's own default is *not* to
+check — its `--help` lists both `--check` and `--no-check`, and invoking it
+with neither gives the unchecked answer.  On **eleven of the seventy-nine**
+captured Isabelle problems that assertion fires; measured over 474 runs,
+dropping the flag turns those crashes into answers and takes the corpus from
+39 answered to 49 — **and five of the ten recovered answers are countermodels
+for propositions that are true**, `p022`, `p034`, `p038`, `p055` and `p057`.
+`p055` is the clean demonstration: cvc5 answers it `UNSAT`, correctly, and
+smbc without `--check` returns `(result SAT :model ())`, an empty model, so
+the same build would report `SAT` or `UNSAT` on one problem according to which
+backend won the race.  The flag is therefore not a preference and not a
+performance knob, and the `check_flag` case of `regress/smbc_models/` (§26)
+makes removing it fail a golden instead of failing a user.
+
 ## Hermetic guard suites (`regress/cvc5_guard/`, `regress/soundness_guard/`, `regress/smbc_models/`, `regress/support/`)
 
 `regress/` holds two unrelated harnesses: the Isabelle-driven benchmark and
@@ -986,6 +1004,14 @@ wall-clock ceiling and its own rule, so a timing regression names itself
 instead of appearing as a golden mismatch.  Two of the answers are captured
 verbatim from real smbc 0.6.1 rather than written by hand.
 
+It also holds one case that is not about the model parser at all,
+`check_flag` (§26), whose rule is hand-written in `dune` rather than generated
+from `cases.tsv`: it pins that nunchaku still passes `--check` to smbc.  Its
+two replies are what real smbc answers with the flag and without it, and
+`fake_solver` picks between them by whether `--check` is on its own command
+line, so a build that stops passing it turns the golden from `UNKNOWN` into an
+empty countermodel for a true proposition.
+
 The cvc5 rules are all the same shape, so they are generated: the case table
 is in `gen_dune.ml`, `dune.inc` is promoted from it and kept honest by a
 runtest diff, and `(include dune.inc)` works at `(lang dune 2.0)`.  Adding
@@ -995,6 +1021,10 @@ a case is a line in the table plus its reply file.
 
 - `fake_solver.ml` — prints the file named by `FAKE_REPLIES`, closes
   stdout (which is what lets a reply end mid-token), then drains stdin.
+  `FAKE_ON_ARG` makes the reply depend on the command line it was invoked
+  with: when that word is among its arguments it prints
+  `FAKE_ON_ARG_REPLIES` and exits `FAKE_ON_ARG_EXIT` instead.  That is what
+  lets a case pin a flag nunchaku must keep passing.
 - `run_case.ml` — runs nunchaku under a wall-clock deadline, captures
   stdout and stderr separately, normalises the output and prints one
   deterministic report ending in `rc=<n>`.  It exists because at
@@ -1198,3 +1228,40 @@ repro, as "the same number".
   list's length.  Nothing measures CVC4 on this fork's workload, and changing
   its arithmetic unmeasured would be exactly the silent re-tune the note
   warns about.  The note says so where a reader of that file will find it.
+
+## 26. smbc's `--check` is pinned by a test, not by luck (commit: TBD)
+
+- **Motivation**: `Smbc.ml` passes `--check` on smbc's command line, and
+  nothing in the tree said what that word is worth.  It gates
+  `Top_goals.check ()` inside smbc, which is `assert false` when the model
+  smbc has just found does not satisfy the problem -- the solver catching
+  itself about to return a wrong answer.  smbc's own default is **not** to
+  check (`--help` lists `--check` and `--no-check`; with neither, it answers
+  unchecked), so deleting the word is enough: no compensating flag is needed
+  and no build error announces it.  Measured over 474 runs, a build without it
+  takes the captured corpus from 39 answered goals to 49 -- and five of the
+  ten it recovers are countermodels for propositions that are **true**.  A
+  ten-goal recall gain is exactly the shape of change somebody makes on
+  purpose, which is why it needs a test and not a comment.
+- **Repro**, and the negative control the case exists to be: with `--check`
+  deleted from `Smbc.ml`'s command line, `p055` of the captured benchmark
+  (Isabelle goal `h6`, `Suc` injective on `nat`, correct answer `UNSAT`)
+  answers `SAT: { }` -- an empty countermodel.  With the flag, `UNKNOWN` with
+  a `BACKEND_ERROR` naming smbc's assertion.  Both replies here are captured
+  verbatim from real smbc 0.6.1 on the TIP problem nunchaku hands it.
+- **Fix**: `regress/smbc_models/check_flag`, hermetic like the rest of the
+  suite.  `fake_solver` gained `FAKE_ON_ARG` / `FAKE_ON_ARG_REPLIES` /
+  `FAKE_ON_ARG_EXIT`, so the fake solver answers the assertion when `--check`
+  is on its command line and the bogus `SAT` when it is not; the golden holds
+  the first.  The rule is hand-written in `regress/smbc_models/dune` rather
+  than generated from `cases.tsv`, because it needs three environment
+  variables no model-parser case has.
+- **Verification**: green on the shipped `Smbc.ml`; on a build with `--check`
+  removed, red, and the failing diff is literally
+  `-UNKNOWN … +SAT: { }`.  `dune build @runtest --force` green otherwise,
+  33 qtest cases and all four golden suites.  The shipped binary is not
+  touched by this entry -- nothing under `src/` changes.
+- **What it does not do**: it pins the flag, not the eleven goals.  Which
+  problems make smbc's assertion fire is a property of smbc and of the
+  encoding, and it will drift; the case would still fail if the flag went
+  away, which is the only thing it claims.

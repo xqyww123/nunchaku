@@ -32,3 +32,65 @@
  (alias runtest)
  (action
   (diff dune.inc dune.inc.gen)))
+
+; The one case here that is not about the model parser.  It pins that nunchaku
+; keeps passing --check to smbc, which is not a preference: smbc's --check
+; gates Top_goals.check (), which is `assert false` when the model smbc just
+; found does not satisfy the problem, and smbc's own default is NOT to check
+; (its --help lists both --check and --no-check; invoking it with neither
+; gives the unchecked answer).  On eleven of the seventy-nine captured
+; Isabelle problems that assertion fires, and it is the only thing standing
+; between nunchaku and a countermodel for a proposition that is true.
+;
+; The two replies are what real smbc 0.6.1 answers on this problem, captured
+; verbatim: with --check it dies on the assertion with exit 2, and without it
+; it returns `(result SAT :model ())` -- an EMPTY countermodel to a goal whose
+; correct answer is UNSAT.  fake_solver picks between them by looking for
+; --check on its own command line, so dropping the flag from Smbc.ml turns
+; this case's golden from UNKNOWN into SAT and the diff fails loudly.
+;
+; Hand-written rather than a row in cases.tsv because it needs three
+; environment variables no model-parser case has, and because its expectation
+; is not one of that table's four words.
+(rule
+ (targets check_flag.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../support/fake_solver.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  problems/inj_suc.nun
+  models/no_check_sat.txt
+  models/check_assert.txt)
+ (action
+  (with-stdout-to
+   check_flag.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_SMBC=%{exe:../support/fake_solver.exe}"
+    --setenv
+    "FAKE_REPLIES=%{dep:models/no_check_sat.txt}"
+    --setenv
+    "FAKE_ON_ARG=--check"
+    --setenv
+    "FAKE_ON_ARG_REPLIES=%{dep:models/check_assert.txt}"
+    --setenv
+    "FAKE_ON_ARG_EXIT=2"
+    --
+    --solvers
+    smbc
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:problems/inj_suc.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff check_flag.expected check_flag.out)))

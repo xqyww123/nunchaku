@@ -1,0 +1,24 @@
+# Suc is injective on the whole of nat, so the goal -- its negation -- has no
+# model and the correct answer is UNSAT.  Captured from the Isabelle
+# certification benchmark (goal h6), reduced only by dropping the frontend's
+# own header comments.
+# complete
+# sound
+data nat_ :=
+  zero_
+| Suc_ nat_.
+
+copy set_ := nat_ -> prop
+  abstract Collect_
+  concrete rmember_.
+
+rec inj__on_ : (nat_ -> nat_) -> set_ -> prop :=
+  forall (f_ : nat_ -> nat_) (A_ : set_). inj__on_ f_ A_ = (forall (x_ : nat_). rmember_ A_ x_ => (forall (xa_ : nat_). (rmember_ A_ xa_ && (f_ x_ = f_ xa_)) => (x_ = xa_))).
+rec top_ : prop :=
+  top_ = true.
+rec top1_ : nat_ -> prop :=
+  top1_ = (fun x_. top_).
+rec top2_ : set_ :=
+  top2_ = Collect_ top1_.
+
+goal ~ (inj__on_ (fun (n_ : nat_). Suc_ n_) top2_).

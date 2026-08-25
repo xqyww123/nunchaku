@@ -258,3 +258,44 @@ parser (`nunchaku_model.ML`, `parse_tm`) has no production for `match`,
 value is therefore unreadable by the Isabelle frontend — it costs the
 model display, not the verdict. Out of scope for this release; the case is
 staged so that whoever fixes it has a witness.
+
+## `check_flag` — the one case that is not about the model parser
+
+Every other case here replays a canned model and asks what nunchaku makes
+of it. `check_flag` asks a different question: **does nunchaku still pass
+`--check` to smbc?**
+
+Why that is worth a golden case. smbc's `--check` gates `Top_goals.check ()`
+(`smbc/src/Solver.ml`), which is literally `assert false` when the model
+smbc has just found does not satisfy the problem — smbc catching itself
+about to return a wrong answer. smbc's own default is *not* to check: its
+`--help` lists both `--check` and `--no-check`, and invoking it with
+neither gives the unchecked answer. On eleven of the seventy-nine captured
+Isabelle problems that assertion fires, and dropping the flag turns those
+eleven crashes into answers — ten more answered goals, five of which are
+countermodels for propositions that are **true**. So one word on
+`Smbc.ml`'s command line is all that stands between this tool and an
+unsound `SAT`, and nothing in the tree used to say so.
+
+How the case works. The problem, `problems/inj_suc.nun`, is one of the
+eleven (`p055` of the benchmark, Isabelle goal `h6`): `Suc` is injective on
+the whole of `nat`, so the goal — its negation — has no model and the
+correct answer is `UNSAT`. Both replies are captured verbatim from real
+smbc 0.6.1 on the TIP problem nunchaku hands it:
+
+| reply file | what smbc really does | golden |
+| --- | --- | --- |
+| `models/check_assert.txt` | with `--check`: the assertion, exit 2 | `UNKNOWN` with a `BACKEND_ERROR` |
+| `models/no_check_sat.txt` | without it: `(result SAT :model ())` | `SAT: { }` |
+
+`fake_solver` chooses between them by looking for `--check` on its own
+command line (`FAKE_ON_ARG`, `FAKE_ON_ARG_REPLIES`, `FAKE_ON_ARG_EXIT`),
+so a build that stops passing the flag makes this case's golden change
+from `UNKNOWN` to an empty countermodel for a true proposition, and the
+diff says exactly that. Verified both ways: green on the shipped
+`Smbc.ml`, and red — with that diff — on a build with `--check` removed
+from the command line.
+
+Its rule is hand-written in `dune` rather than a row in `cases.tsv`,
+because it needs three environment variables no model-parser case has and
+its expectation is none of that table's four words.

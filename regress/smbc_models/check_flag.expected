@@ -1,0 +1,6 @@
+UNKNOWN
+(BACKEND_ERROR {backend:smbc, time:Ns} smbc failed with errcode 2, output:
+`Fatal error: exception File "src/Solver.ml", line 2955, characters 8-14: Assertion failed
+`)
+--- stderr ---
+rc=0
