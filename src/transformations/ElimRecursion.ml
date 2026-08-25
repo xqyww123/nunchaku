@@ -747,7 +747,7 @@ let pipe_with ?on_decoded ~decode ~print ~check () =
       Format.printf "@[<v2>@{<Yellow>after elimination of recursion@}: %a@]@." PPb.pp)
     @
       Utils.singleton_if check () ~f:(fun () ->
-        let module C = TypeCheck.Make(T) in
+        let module C = TypeCheck.Default in
         C.empty () |> C.check_problem)
   in
   Transform.make

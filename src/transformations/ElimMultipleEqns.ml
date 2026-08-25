@@ -421,7 +421,7 @@ let pipe ~decode ~print ~check =
       Format.printf "@[<v2>@{<Yellow>after uniq equations@}: %a@]@." PPb.pp)
     @
       Utils.singleton_if check () ~f:(fun () ->
-        let module C = TypeCheck.Make(T) in
+        let module C = TypeCheck.Default in
         C.empty () |> C.check_problem)
   and decode _ x = decode x in
   Transform.make

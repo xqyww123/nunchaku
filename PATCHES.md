@@ -1068,3 +1068,42 @@ repro, as "the same number".
   answering 40 in every run instead of 39.  Verdicts are unchanged where they
   were produced: all 79 captured problems give the same first line before and
   after.
+
+## 23. One `TypeCheck` instance, not one per transformation (commit: TBD)
+
+- **Motivation**: every transformation's `~check` callback is
+  `fun () -> let module C = TypeCheck.Make(T) in C.empty () |> C.check_problem`,
+  and `Utils.singleton_if check ~f x` **applies** `f` (`src/core/Utils.ml:227`).
+  So a 330-line generative functor was applied once per pipeline stage while
+  the pipeline was being *built* -- before any problem had been read, and for
+  stages that particular run may never enter.  Nineteen call sites did this,
+  every one of them passing the same `module T = Term`, and `--no-checks` is
+  the only thing that would have skipped it (the default is on and the
+  Isabelle frontend never passes it).  Nothing at a call site says
+  `singleton_if` is eager, which is why nineteen of them read as if the
+  functor application were inside the callback.
+- **Repro**: the measurement study's allocation counter, quoted here because
+  it is what identified the cause: pipeline assembly allocated 221 668 words
+  per call and allocated *the same* amount for `--solvers cvc5`, for
+  `--solvers smbc`, and with no solver reachable at all -- so the allocation
+  is the functor, not the problem and not the backends.  After the change,
+  8 796 words, assembly 2.056 ms -> 0.048 ms, and the one minor collection it
+  provoked goes away.
+- **Fix**: `TypeCheck.Default = Make(Term)` in `src/core/TypeCheck.ml`,
+  exported from the `.mli`, used by all nineteen sites.  Sharing one instance
+  is safe by inspection rather than by convention: `TypeCheck.Make` has no
+  module-level mutable binding, and neither do the functors it applies
+  (`AnalyzeType.Make`, `TI.Util`, `TI.Print`) -- `AnalyzeType`'s tables live
+  inside `create_cache ()`, per call.  So one instance cannot introduce state
+  shared between stages, or between tasks decoding concurrently.
+- **Effect**: measured here, 5 interleaved rounds x 79 captured Isabelle
+  problems x 2 builds at `--timeout 1`, the two builds rotating inside each
+  problem so both see the same load history (395 pairs, load 3.56 -> 6.56):
+  paired median **-0.60 ms** over the whole corpus, **-1.30 ms** (p25 -2.50,
+  p75 +0.30, faster in 171 of 235 pairs) over the calls that finish in under
+  200 ms -- which are the only ones where a constant is observable at all --
+  and +0.00 ms on the calls that sit at the budget wall.  Verdicts identical
+  on all 79 problems in every round at both the 1 s and the 5 s tier.
+- **Why it is worth taking even at zero milliseconds**: the old shape asks
+  every future transformation to remember that `singleton_if` is eager.
+  Nineteen call sites did not.

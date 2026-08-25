@@ -328,3 +328,10 @@ module Make(T : TI.S) = struct
     let _ = CCVector.fold check_statement t (Problem.statements pb) in
     ()
 end
+
+(* The one instance every transformation uses.  Not [Make(Term)] per call site:
+   the [~check] callbacks are applied by [Utils.singleton_if] while the pipeline
+   is being *built*, before any problem has been looked at, so a per-site
+   application ran this generative functor once per stage on every call --
+   including for stages the run never enters. *)
+module Default = Make(Term)

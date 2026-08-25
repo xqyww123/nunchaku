@@ -433,7 +433,7 @@ let pipe ~print ~check =
       Format.printf "@[<v2>@{<Yellow>after %s@}:@ %a@]@." name Ppb.pp)
     @
       Utils.singleton_if check () ~f:(fun () ->
-        let module C = TypeCheck.Make(T) in
+        let module C = TypeCheck.Default in
         C.empty () |> C.check_problem)
   in
   let decode st = Problem.Res.map_m ~f:(decode_model st) in

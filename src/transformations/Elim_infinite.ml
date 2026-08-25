@@ -189,7 +189,7 @@ let pipe_with ~decode ~print ~check =
     @
       Utils.singleton_if check ()
         ~f:(fun () ->
-          let module C = TypeCheck.Make(T) in
+          let module C = TypeCheck.Default in
           C.empty () |> C.check_problem)
   in
   Transform.make

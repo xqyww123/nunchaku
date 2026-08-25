@@ -630,7 +630,7 @@ let pipe_with ~decode ~always_mangle ~print ~check =
     @
       Utils.singleton_if check ()
         ~f:(fun () ->
-          let module C = TypeCheck.Make(T) in
+          let module C = TypeCheck.Default in
           let t = C.empty ~check_non_empty_tys:true () in
           C.check_problem t)
   in

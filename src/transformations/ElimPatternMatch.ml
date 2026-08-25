@@ -126,7 +126,7 @@ let pipe ~mode ~print ~check =
       Format.printf "@[<v2>@{<Yellow>after elimination of pattern-match@}: %a@]@." PPb.pp)
     @
       Utils.singleton_if check () ~f:(fun () ->
-        let module C = TypeCheck.Make(T) in
+        let module C = TypeCheck.Default in
         C.check_problem (C.empty ()))
   in
   let encode pb = tr_problem ~mode pb, () in

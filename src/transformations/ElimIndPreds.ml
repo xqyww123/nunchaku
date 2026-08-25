@@ -386,7 +386,7 @@ let pipe_with ~decode ~print ~check ~mode =
       Format.printf "@[<v2>@{<Yellow>after elimination of inductive predicates@}:@ %a@]@." Ppb.pp)
     @
       Utils.singleton_if check () ~f:(fun () ->
-        let module C = TypeCheck.Make(T) in
+        let module C = TypeCheck.Default in
         C.empty () |> C.check_problem)
   and new_features = match mode with
     | `Use_selectors -> []

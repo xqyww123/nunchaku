@@ -29,3 +29,7 @@ module Make(T : TermInner.S) : sig
         @param check_non_empty_tys if true, also check that no statement
          defines an empty type. default false. *)
 end
+
+module Default : module type of Make(Term)
+(** The instance the transformations use.  All of them check [Term] problems;
+    sharing one instance keeps the functor from being applied per call site. *)

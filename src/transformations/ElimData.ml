@@ -1161,7 +1161,7 @@ module Make(M : sig val mode : mode end) = struct
     let on_encoded =
       Utils.singleton_if check ()
         ~f:(fun () ->
-          let module C = TypeCheck.Make(T) in
+          let module C = TypeCheck.Default in
           C.empty () |> C.check_problem)
       @
         Utils.singleton_if print ()
