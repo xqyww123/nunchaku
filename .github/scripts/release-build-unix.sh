@@ -1,7 +1,7 @@
 #!/bin/bash
 # Build the two binaries one unix release leg contributes: nunchaku, from this
-# checkout, and smbc 0.6.1, from its upstream git tag.  Run under `opam exec --`
-# so the switch setup-ocaml created is active.
+# checkout, and smbc at the version and commit component/solvers.pins names.
+# Run under `opam exec --` so the switch setup-ocaml created is active.
 #
 # One script for all four unix legs; everything that differs between them is
 # derived from $ISA_PLATFORM below, so there is no per-platform copy to keep in
@@ -74,7 +74,7 @@ dune runtest --profile=release
 cp _build/default/src/main/nunchaku.exe nunchaku-bin
 
 # ---------------------------------------------------------------------------
-# smbc 0.6.1 -- MUST come after `dune runtest` above
+# smbc -- MUST come after `dune runtest` above
 # ---------------------------------------------------------------------------
 # This step force-downgrades containers to 2.8.1, because smbc needs the
 # `containers.sexp` sublibrary that containers 3.x removed.  That contradicts
@@ -86,7 +86,7 @@ cp _build/default/src/main/nunchaku.exe nunchaku-bin
 # built on OCaml 4.14 at all -- its dependency era is capped at ocaml < 4.08,
 # which predates arm64 macOS support entirely.  smbc is not in opam-repository
 # (opam.ocaml.org/packages/smbc is 404), hence the pin straight from the
-# upstream git tag; containers 2.x was archived out of the live repository,
+# upstream repository; containers 2.x was archived out of the live repository,
 # hence the archive repo.
 #
 # `opam repo add` is guarded only because a bare `add` on an already-registered
