@@ -376,14 +376,69 @@ let empty_penv : parse_env = StrMap.empty
 
 (* State of one model parse, created by {!convert_model} and threaded from
    there.  Never module-level: {!erase} is, and is never reset, so a second
-   problem in the same process would inherit the first one's unknowns. *)
+   problem in the same process would inherit the first one's unknowns.
+
+   [uf_*] is the typed-unknown environment: a union-find over the ids of
+   smbc's unknowns, where each class root carries at most one type and a
+   poison flag.  It answers "is this unknown's type determined anywhere in
+   the model?", which is a property of the model rather than of any
+   enumeration of syntactic positions. *)
 type parse_state = {
   unknowns: ID.t StrTbl.t; (* smbc unknown name ("?a__2") -> its id *)
+  uf_parent: ID.t ID.Tbl.t; (* union-find over unknowns that must share a type *)
+  uf_ty: ty ID.Tbl.t; (* at most one type per class root *)
+  uf_poison: unit ID.Tbl.t; (* class roots whose type came out inconsistent *)
 }
 
 let mk_parse_state (): parse_state = {
   unknowns = StrTbl.create 16;
+  uf_parent = ID.Tbl.create 16;
+  uf_ty = ID.Tbl.create 16;
+  uf_poison = ID.Tbl.create 8;
 }
+
+let rec uf_find (st:parse_state) (id:ID.t): ID.t =
+  match ID.Tbl.get st.uf_parent id with
+    | None -> id
+    | Some p -> let r = uf_find st p in ID.Tbl.replace st.uf_parent id r; r
+
+let is_poisoned (st:parse_state) (id:ID.t): bool =
+  ID.Tbl.mem st.uf_poison (uf_find st id)
+
+(* "this unknown has type [ty]".  Two incompatible types for one class mean
+   no single identity is safe for it: poison the class, and warn once (the
+   poison flag is what makes it once).  The warning names the unknown as
+   smbc named it -- "?__<n>" is a process-global counter, useless to a
+   reader of smbc's output. *)
+let set_type (st:parse_state) (id:ID.t) (ty:ty): unit =
+  let r = uf_find st id in
+  if not (ID.Tbl.mem st.uf_poison r) then (
+    match ID.Tbl.get st.uf_ty r with
+      | Some ty0 when not (T.equal ty0 ty) ->
+        Utils.warningf Utils.Warn_model_parsing_error
+          "unknown `%a` recovered at two types: `@[%a@]` and `@[%a@]`"
+          ID.pp id T.pp ty0 T.pp ty;
+        ID.Tbl.replace st.uf_poison r ()
+      | Some _ -> ()
+      | None -> ID.Tbl.add st.uf_ty r ty
+  )
+
+(* "these two unknowns share a type, whatever it turns out to be".
+   The union carries both the class type and the poison flag. *)
+let same_type (st:parse_state) (a:ID.t) (b:ID.t): unit =
+  let ra = uf_find st a and rb = uf_find st b in
+  if not (ID.equal ra rb) then (
+    ID.Tbl.replace st.uf_parent ra rb;
+    if ID.Tbl.mem st.uf_poison ra then ID.Tbl.replace st.uf_poison rb ();
+    match ID.Tbl.get st.uf_ty ra with
+      | Some ty -> ID.Tbl.remove st.uf_ty ra; set_type st rb ty
+      | None -> ()
+  )
+
+(* the class's type; [None] for a poisoned class, which has no safe type *)
+let type_of (st:parse_state) (id:ID.t): ty option =
+  let r = uf_find st id in
+  if ID.Tbl.mem st.uf_poison r then None else ID.Tbl.get st.uf_ty r
 
 (* the id of the smbc unknown named [s]; repeated occurrences share one id *)
 let unknown_id (st:parse_state) (s:string): ID.t =
@@ -423,9 +478,41 @@ let id_of_tip (st:parse_state) (penv:parse_env) (s:string):
       end
   end
 
-(* [ty], when known, is the expected type of [t]; it is threaded down so
-   that unknowns ("?…" constants of smbc) can be given a type, see
-   {!term_of_id} *)
+(* the smbc unknown at the head of [t], applied or not, whether or not a
+   type has already been attached to it.  Constraints are about the
+   unknown's identity, not about what conversion happened to learn first:
+   keying on the untyped form alone silently drops every constraint on an
+   unknown that has already picked up a type somewhere. *)
+let unknown_head_ (t:term): (ID.t * term list) option =
+  let hd u = match T.repr u with
+    | TI.Builtin (`Undefined_self c) ->
+      (match T.repr c with TI.Const id -> Some id | _ -> None)
+    | TI.Builtin (`Undefined_atom (id,_)) -> Some id
+    | _ -> None
+  in
+  match T.repr t with
+    | TI.App (h, args) -> (match hd h with Some id -> Some (id, args) | None -> None)
+    | _ -> (match hd t with Some id -> Some (id, []) | None -> None)
+
+(* learn "the already-converted term [t] was expected to have type [ty]".
+   O(α(n)) and converts nothing. *)
+let push_ty ~env (st:parse_state) (ty:ty) (t:term): unit =
+  match unknown_head_ t with
+    | None -> ()
+    | Some (id, []) -> set_type st id ty
+    | Some (id, args) ->
+      (match CCList.all_some (List.map (fun a -> E.to_opt (T.ty ~env a)) args) with
+        | Some tys -> set_type st id (T.ty_arrow_l tys ty)
+        | None -> ())
+
+(* Every [A.term] node is converted exactly once: no call below takes an
+   argument another call already took.  Type information travels two ways,
+   and neither is a re-conversion: [ty] is threaded downward and gives types
+   to structures (a lambda body, an [if] branch); the typed-unknown
+   environment above collects constraints on unknowns by identity, and
+   {!repair_holes} applies them once the whole model has been read.
+
+   [ty], when known, is the expected type of [t]; see {!term_of_id}. *)
 let rec term_of_tip st ~env ?ty (penv:parse_env) (t:A.term): term =
   match A.t_view t with
   | A.True -> T.true_
@@ -442,7 +529,10 @@ let rec term_of_tip st ~env ?ty (penv:parse_env) (t:A.term): term =
        let head = match ty with
          | Some ret ->
            (match CCList.all_some (List.map (fun a -> E.to_opt (T.ty ~env a)) l) with
-            | Some tys -> T.builtin (`Undefined_atom (id, T.ty_arrow_l tys ret))
+            | Some tys ->
+              let ty_h = T.ty_arrow_l tys ret in
+              set_type st id ty_h;
+              T.builtin (`Undefined_atom (id, ty_h))
             | None -> T.undefined_self (T.const id))
          | None -> T.undefined_self (T.const id)
        in
@@ -470,7 +560,10 @@ let rec term_of_tip st ~env ?ty (penv:parse_env) (t:A.term): term =
        (* unknown head of a unary application: same synthesis as A.App *)
        let a = term_of_tip st ~env penv a in
        let head = match ty, E.to_opt (T.ty ~env a) with
-         | Some ret, Some ty_a -> T.builtin (`Undefined_atom (id, T.ty_arrow_l [ty_a] ret))
+         | Some ret, Some ty_a ->
+           let ty_h = T.ty_arrow_l [ty_a] ret in
+           set_type st id ty_h;
+           T.builtin (`Undefined_atom (id, ty_h))
          | _ -> T.undefined_self (T.const id)
        in
        T.app head [a]
@@ -485,18 +578,18 @@ let rec term_of_tip st ~env ?ty (penv:parse_env) (t:A.term): term =
          | _ -> None
        in
        let f = term_of_tip st ~env ?ty:ty_f penv f in
-       let a = match ty_f with
-         | Some _ -> a0
-         | None ->
-           (* no expectation built; recover the argument's expected type
-              from the function's, as before *)
-           (match E.to_opt (T.ty ~env f) with
-            | Some ty_f -> (match T.ty_unfold ty_f with
-                | _, ty_a :: _, _ -> term_of_tip st ~env ~ty:ty_a penv a
-                | _ -> a0)
-            | None -> a0)
-       in
-       T.app f [a])
+       (* no expectation was built for [f], so the argument's expected type
+          has to come back from [f]'s: register it instead of converting the
+          argument a second time *)
+       if CCOption.is_none ty_f then (
+         match E.to_opt (T.ty ~env f) with
+           | Some ty_f ->
+             (match T.ty_unfold ty_f with
+                | _, ty_a :: _, _ -> push_ty ~env st ty_a a0
+                | _ -> ())
+           | None -> ()
+       );
+       T.app f [a0])
   | A.Match (u,l) ->
     (* recover type info on the scrutinee; when it has none of its own
        (e.g. it is an unknown), its datatype is the result type of any
@@ -513,13 +606,13 @@ let rec term_of_tip st ~env ?ty (penv:parse_env) (t:A.term): term =
              | None -> None)
           | A.Match_default _ -> None)
     in
-    let u0 = term_of_tip st ~env penv u in
-    let u, ty_u = match E.to_opt (T.ty ~env u0) with
-      | Some ty_u -> u0, ty_u
+    let u = term_of_tip st ~env penv u in
+    let ty_u = match E.to_opt (T.ty ~env u) with
+      | Some ty_u -> ty_u
       | None ->
         (match ty_of_branches () with
-         | Some ty_u -> term_of_tip st ~env ~ty:ty_u penv u, ty_u
-         | None -> u0, T.ty_exn ~env u0 (* no recovery: fail as before *))
+         | Some ty_u -> push_ty ~env st ty_u u; ty_u
+         | None -> T.ty_exn ~env u (* no recovery: fail as before *))
     in
     let tydef = match T.info_of_ty_exn ~env ty_u |> Env.def with
       | Env.Data (_, _, tydef) -> tydef
@@ -596,17 +689,20 @@ let rec term_of_tip st ~env ?ty (penv:parse_env) (t:A.term): term =
     let body = term_of_tip st ~env ?ty:ty_body penv body in
     T.fun_ v body
   | A.Eq (a,b) ->
-    (* both sides share a type: take the expectation from whichever side
-       has one (conversion is stable, ids are memoised, so re-converting
-       the other side is safe) *)
+    (* both sides share a type: register that, then give the class whatever
+       type either side turns out to carry *)
     let a0 = term_of_tip st ~env penv a in
-    (match E.to_opt (T.ty ~env a0) with
-     | Some ty_a -> T.No_simp.eq a0 (term_of_tip st ~env ~ty:ty_a penv b)
-     | None ->
-       let b0 = term_of_tip st ~env penv b in
-       (match E.to_opt (T.ty ~env b0) with
-        | Some ty_b -> T.No_simp.eq (term_of_tip st ~env ~ty:ty_b penv a) b0
-        | None -> T.No_simp.eq a0 b0))
+    let b0 = term_of_tip st ~env penv b in
+    (* only bare heads: for [(?f x) = (?g y)] it is the *results* that share
+       a type, not the heads *)
+    (match unknown_head_ a0, unknown_head_ b0 with
+     | Some (ia, []), Some (ib, []) -> same_type st ia ib
+     | _ -> ());
+    (match E.to_opt (T.ty ~env a0), E.to_opt (T.ty ~env b0) with
+     | Some ty_a, _ -> push_ty ~env st ty_a b0
+     | _, Some ty_b -> push_ty ~env st ty_b a0
+     | None, None -> ());
+    T.No_simp.eq a0 b0
   | A.Imply (a,b) ->
     T.No_simp.imply (term_of_tip st ~env ~ty:T.ty_prop penv a)
       (term_of_tip st ~env ~ty:T.ty_prop penv b)
@@ -614,12 +710,19 @@ let rec term_of_tip st ~env ?ty (penv:parse_env) (t:A.term): term =
     let l = List.map (term_of_tip st ~env ~ty:T.ty_prop penv) l in
     T.No_simp.and_ l
   | A.Distinct l ->
-    (* all elements share one type: any typed element determines it *)
-    let l0 = List.map (term_of_tip st ~env penv) l in
-    let l = match CCList.find_map (fun t -> E.to_opt (T.ty ~env t)) l0 with
-      | Some ty_elt -> List.map (term_of_tip st ~env ~ty:ty_elt penv) l
-      | None -> l0
-    in
+    (* all elements share one type: any typed element determines it.
+       Registration runs over the element list, not over the O(n²)
+       expansion below. *)
+    let l = List.map (term_of_tip st ~env penv) l in
+    (match
+       CCList.filter_map
+         (fun t -> match unknown_head_ t with Some (i, []) -> Some i | _ -> None) l
+     with
+      | i0 :: rest -> List.iter (same_type st i0) rest
+      | [] -> ());
+    (match CCList.find_map (fun t -> E.to_opt (T.ty ~env t)) l with
+      | Some ty_elt -> List.iter (push_ty ~env st ty_elt) l
+      | None -> ());
     CCList.diagonal l
     |> List.map (fun (a,b) -> T.No_simp.neq a b)
     |> T.No_simp.and_
@@ -644,10 +747,15 @@ and term_of_id (st:parse_state) ?ty (env:parse_env) (s:string): term = match id_
        is known, make it an [`Undefined_atom], which prints as "?__<n>" --
        a form model consumers can parse back. [id] was freshly allocated by
        [id_of_tip], so it cannot clash with any other id. With no type at
-       hand, fall back to the old opaque hole. *)
+       hand, ask the typed-unknown environment -- {!A.Match} needs the
+       scrutinee's datatype *during* conversion, so a type the repair pass
+       would supply arrives too late. Failing both, the old opaque hole. *)
     (match ty with
-     | Some ty -> T.builtin (`Undefined_atom (id, ty))
-     | None -> T.undefined_self (T.const id))
+     | Some ty -> set_type st id ty; T.builtin (`Undefined_atom (id, ty))
+     | None ->
+       (match type_of st id with
+        | Some ty -> T.builtin (`Undefined_atom (id, ty))
+        | None -> T.undefined_self (T.const id)))
   | `Subst t -> t
   | `Var v -> T.var v
 
@@ -844,6 +952,34 @@ let dt_of_term (t:term): (term,ty) Model.DT.t =
 
 module A_res = A.Smbc_res
 
+(* One linear pass over a finished value term, applying what the
+   typed-unknown environment learned anywhere in the model.  It runs after
+   every entry has been converted, which is what makes recovery independent
+   of the order in which smbc emitted its entries.  No fixpoint: the
+   union-find is already confluent. *)
+let repair_holes (st:parse_state) (t:term): term =
+  let bind () v = (), v in
+  let rec aux () t =
+    match T.repr t with
+      | TI.Builtin (`Undefined_atom (id, ty)) when is_poisoned st id ->
+        (* the class carries two types; never let one identity stand for
+           both.  [`Unparsable] is what model consumers already understand *)
+        T.builtin (`Unparsable ty)
+      | _ ->
+        match unknown_head_ t with
+          | Some (id, args) ->
+            (match type_of st id with
+               (* the arity guard: a base-typed entry spliced into head
+                  position would yield an ill-typed application *)
+               | Some ty when
+                   (let _, ty_args, _ = T.ty_unfold ty in
+                    List.length ty_args >= List.length args) ->
+                 T.app (T.builtin (`Undefined_atom (id, ty))) (List.map (aux ()) args)
+               | _ -> T.map ~f:aux ~bind () t)
+          | None -> T.map ~f:aux ~bind () t
+  in
+  aux () t
+
 let convert_model ~env (m:A_res.model): (_,_) Model.t =
   let st = mk_parse_state () in
   (* Pre-scan: declare every domain element ("$a__0") with its type.
@@ -883,31 +1019,38 @@ let convert_model ~env (m:A_res.model): (_,_) Model.t =
         end
       | _ -> fail()
   in
+  (* Two phases.  Converting every entry first fills the typed-unknown
+     environment; only then can the repair pass apply a type that a *later*
+     entry determined. *)
+  let entries =
+    List.map
+      (function
+        | A_res.Ty (ty, dom) ->
+          let ty = ty_of_tip st ty in
+          let dom =
+            List.map
+              (fun s -> match id_of_tip st empty_penv s with
+                 | `Subst _
+                 | `Var _ -> error_parse_modelf "invalid domain element %s" s
+                 | `Const id
+                 | `Undef id -> id)
+              dom
+          in
+          `Ty (ty, dom)
+        | A_res.Val (a,b) ->
+          let a = term_of_tip st ~env empty_penv a in
+          `Val (a, term_of_tip st ~env ?ty:(E.to_opt (T.ty ~env a)) empty_penv b))
+      m
+  in
   List.fold_left
     (fun m e -> match e with
-       | A_res.Ty (ty, dom) ->
-         let ty = ty_of_tip st ty in
-         let dom =
-           List.map
-             (fun s -> match id_of_tip st empty_penv s with
-                | `Subst _
-                | `Var _ -> error_parse_modelf "invalid domain element %s" s
-                | `Const id
-                | `Undef id -> id)
-             dom
-         in
-         Model.add_finite_type m ty dom
-       | A_res.Val (a,b) ->
-         let a = term_of_tip st ~env empty_penv a in
+       | `Ty (ty, dom) -> Model.add_finite_type m ty dom
+       | `Val (a,b) ->
          (* conversion of [b] into a proper decision tree *)
-         let b =
-           term_of_tip st ~env ?ty:(E.to_opt (T.ty ~env a)) empty_penv b
-           |> extract_to_outer_function
-           |> dt_of_term
-         in
+         let b = b |> repair_holes st |> extract_to_outer_function |> dt_of_term in
          let k = find_kind a in
          Model.add_value m (a,b,k))
-    Model.empty m
+    Model.empty entries
 
 (* the problem metadata is merged into the answer by [Mark_spurious], the
    stage [close_task] composes for every backend; do not do it here *)
