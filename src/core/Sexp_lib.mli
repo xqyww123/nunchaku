@@ -23,6 +23,12 @@ val pp : t CCFormat.printer
 
 val to_string : t -> string
 
+val unquote_atom : string -> string
+(** Undo the string-literal convention of the lexer -- surrounding double
+    quotes, and inner quotes escaped by doubling them -- on an atom that is a
+    string literal; any other atom is returned unchanged. For displaying a
+    payload to a user: atoms otherwise stay exactly as they came off the wire. *)
+
 val to_chan : out_channel -> t -> unit
 
 val to_file : string -> t -> unit

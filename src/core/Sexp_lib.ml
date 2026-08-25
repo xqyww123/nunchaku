@@ -31,6 +31,15 @@ let rec pp out t = match t with
 
 let to_string = CCFormat.to_string pp
 
+(* The lexer hands a string literal over as its raw lexeme: delimiters kept and
+   inner quotes still doubled, which is what keeps an atom distinguishable from
+   a string.  Undo both, for the few places that show the payload to a user. *)
+let unquote_atom s =
+  let n = String.length s in
+  if n >= 2 && s.[0] = '"' && s.[n-1] = '"'
+  then CCString.replace ~which:`All ~sub:"\"\"" ~by:"\"" (String.sub s 1 (n-2))
+  else s
+
 let pp_newline out () =
   if Sys.cygwin||Sys.win32
   then CCFormat.string out "\r\n"

@@ -683,6 +683,8 @@ let read_res_ ~info ~print_model ~decode s =
       Utils.debug ~section 5 "CVC4 returned `unknown`";
       Res.Unknown [Res.U_other (Lazy.force info, "")]
     | `Ok (`List [`Atom "error"; `Atom s]) ->
+      (* the message reaches the user verbatim, so show it unquoted *)
+      let s = Sexp_lib.unquote_atom s in
       Utils.debugf ~section 5 "@[<2>CVC4 returned `error %s`@]" (fun k->k s);
       Res.Unknown [Res.U_backend_error (Lazy.force info, cvc4_error_ s)]
     | `Ok sexp ->
