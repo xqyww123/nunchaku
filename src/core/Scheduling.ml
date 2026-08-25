@@ -221,12 +221,17 @@ let popen ?(on_res=[]) cmd ~f =
   ensure_session_leader ();
   if Sys.unix then ignore (Unix.sigprocmask Unix.SIG_BLOCK [13]); (* block sigpipe *)
   (* spawn subprocess *)
-  let stdout, p_stdout = Unix.pipe () in
-  let stderr, p_stderr = Unix.pipe () in
-  let p_stdin, stdin = Unix.pipe () in
-  Unix.set_close_on_exec stdout;
-  Unix.set_close_on_exec stderr;
-  Unix.set_close_on_exec stdin;
+  (* Create the pipes close-on-exec, rather than marking them afterwards: the
+     pool starts several tasks in parallel, so a sibling's [create_process]
+     can fork in the window between [Unix.pipe] and [set_close_on_exec], and
+     the solver it execs then holds our write end open for good -- the reader
+     never sees EOF and the task burns the whole budget.  Measured before this
+     change: 24-33 of 100 calls on three goals that otherwise answer in 20 ms.
+     [create_process] dups its three descriptors onto 0/1/2 in the child, and
+     dup clears the flag, so the child still gets its own ends. *)
+  let stdout, p_stdout = Unix.pipe ~cloexec:true () in
+  let stderr, p_stderr = Unix.pipe ~cloexec:true () in
+  let p_stdin, stdin = Unix.pipe ~cloexec:true () in
   let stdout = Unix.in_channel_of_descr stdout in
   let stdin = Unix.out_channel_of_descr stdin in
   let pid = Unix.create_process

@@ -1043,3 +1043,28 @@ This applies to the reproductions in this file too: a `?__117` or a
 `?__46 ?__47` above is the number that run happened to print, not a number
 yours will print.  Read them as "a number", and where one repeats within a
 repro, as "the same number".
+
+## 22. Solver pipes are close-on-exec from the start (commit: TBD)
+
+- **Motivation**: the pool starts several backends in parallel, each in its own
+  thread.  `popen` created its three pipes and only then marked the parent-side
+  ends close-on-exec, so a sibling thread's `create_process` could fork in the
+  window between the two.  The forked child inherited the write end of another
+  task's pipe and its `exec`'d solver held it open, so that task's reader never
+  saw EOF: it waited until the deadline killed it, and the answer its solver had
+  already produced was thrown away.
+- **Repro**: `p017`, `p059`, `p061` of the captured Isabelle benchmark answer
+  `SAT` in about 20 ms when they answer.  100 calls each in the shipping
+  configuration, before: 33, 24 and 27 `UNKNOWN` after burning the full 1 s
+  budget; with `-j 1`, or with smbc alone, 0.  Measured again here at 50 calls
+  each: 19, 20 and 13 before, **0, 0 and 0** after.
+- **Fix**: create the pipes with `Unix.pipe ~cloexec:true`, so there is no
+  window rather than a guarded one.  `create_process` dups its three
+  descriptors onto 0/1/2 in the child and dup clears the flag, so the child
+  still gets its own ends.  A mutex around pipe-then-fork would also close the
+  window, but it would serialise process creation; this does not.
+- **Effect on recall**: the measurement study puts the shipping configuration at
+  38 of 79 goals at the 1 s tier before the fix and 40 after, with the 5 s tier
+  answering 40 in every run instead of 39.  Verdicts are unchanged where they
+  were produced: all 79 captured problems give the same first line before and
+  after.
