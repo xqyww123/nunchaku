@@ -59,6 +59,25 @@ jobs:
       # (from the opam archive repo) is forced because smbc needs the
       # containers.sexp sublibrary that containers 3.x removed.  nunchaku is
       # already built above, so the downgrade cannot hurt it.
+      # Full test suite, BEFORE the smbc step: smbc's containers-2.8.1
+      # downgrade breaks building the test runner.  Same invocation as the
+      # linux CI `run` job (dune runtest --profile=release).
+      - name: Run test suite (dune runtest)
+        run: |
+          set -o pipefail
+          t0=$SECONDS
+          opam install -y qtest qcheck ounit
+          echo "PROBE-TIMING test-deps $((SECONDS - t0))s"
+          t0=$SECONDS
+          set +e
+          opam exec -- dune runtest --profile=release 2>&1 | tee runtest.log
+          rc=$?
+          set -e
+          echo "PROBE-TIMING runtest $((SECONDS - t0))s"
+          echo "PROBE-RUNTEST-EXIT $rc"
+          echo "PROBE-RUNTEST-SUMMARY $(grep -E 'Ran: [0-9]+ tests' runtest.log || echo 'no Ran: line')"
+          exit $rc
+
       - name: Build smbc 0.6.1
         run: |
           t0=$SECONDS
@@ -177,6 +196,25 @@ jobs:
           file ./nunchaku-bin
           readelf -l ./nunchaku-bin | head -20
           ! readelf -l ./nunchaku-bin | grep -q INTERP
+
+      # Full test suite, BEFORE the smbc step: smbc's containers-2.8.1
+      # downgrade breaks building the test runner.  Same invocation as the
+      # linux CI musl job: OCAMLPARAM=_,ccopt=-static kept for the test runner too.
+      - name: Run test suite (dune runtest)
+        run: |
+          set -o pipefail
+          t0=$SECONDS
+          opam install -y qtest qcheck ounit
+          echo "PROBE-TIMING test-deps $((SECONDS - t0))s"
+          t0=$SECONDS
+          set +e
+          opam exec -- env OCAMLPARAM="_,ccopt=-static" dune runtest --profile=release 2>&1 | tee runtest.log
+          rc=$?
+          set -e
+          echo "PROBE-TIMING runtest $((SECONDS - t0))s"
+          echo "PROBE-RUNTEST-EXIT $rc"
+          echo "PROBE-RUNTEST-SUMMARY $(grep -E 'Ran: [0-9]+ tests' runtest.log || echo 'no Ran: line')"
+          exit $rc
 
       - name: Build smbc 0.6.1 (musl static)
         run: |
