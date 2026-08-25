@@ -134,6 +134,22 @@ flip the gate.
 If the run improved on the baseline (allowed drifts only), refresh
 `baseline/` from the new TSVs in the same commit that explains why.
 
+The current `baseline/` was recorded for 0.5.3, against cvc5 1.3.4 and the
+bundled smbc 0.6.1.  Three classes of cell moved against the 0.5.2 baseline,
+and each is a consequence of a change this release makes on purpose:
+
+- `n4` (four cells) and `b3` (two) lost their refutations.  Those goals carry
+  `sat_means_unknown`, so their models may be spurious; the baseline records
+  that none of them could be displayed anyway (`model=no`).  The fork no
+  longer claims them.
+- 28 cells went from `model=no` to `model=yes`: countermodels that used to
+  reach Isabelle with a token its parser rejects — costing the whole model
+  block — are now shown.
+- `ls2/nunchaku_ship/1s` and `d2/nunchaku_smbc/1s` lost a countermodel they
+  used to produce at 1022-1023 ms.  Before this release nunchaku overran its
+  own `--timeout`; now the budget is a wall-clock deadline, so a 1 s call
+  gets one second.  Both are on the reported, ungated tier.
+
 ## 5. Release
 
 Follow `RELEASE_CHECKLIST.md` in the packaging repository

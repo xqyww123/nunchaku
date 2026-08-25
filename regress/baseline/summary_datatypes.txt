@@ -1,36 +1,28 @@
 == Per class x engine x tier ==
 class	engine	tier	nF	genuine	quasi	potential	none/unk	err/toG	nT	SPURIOUS	modelMiss	medianMs	p90Ms
-datatype	nitpick	1	8	8	0	0	0	0	8	0	0	656	1448
-datatype	nitpick	5	8	8	0	0	0	0	8	0	0	643	5409
-datatype	nunchaku	1	8	6	0	0	2	0	8	0	1	1045	2012
-datatype	nunchaku	5	8	7	0	0	1	0	8	0	1	534	6016
-datatype	nunchaku_ship	1	8	8	0	0	0	0	8	0	1	59	2012
-datatype	nunchaku_ship	5	8	8	0	0	0	0	8	0	1	63	6016
-datatype	nunchaku_smbc	1	8	8	0	0	0	0	8	0	1	83	2013
-datatype	nunchaku_smbc	5	8	8	0	0	0	0	8	0	1	538	6017
-arith_bigwit	nitpick	1	4	0	0	0	4	0	1	0	0	105	110
-arith_bigwit	nitpick	5	4	0	0	0	4	0	1	0	0	47	47
-arith_bigwit	nunchaku	1	4	1	0	0	3	0	1	0	1	2014	2015
-arith_bigwit	nunchaku	5	4	1	0	0	3	0	1	0	1	6016	6017
-arith_bigwit	nunchaku_ship	1	4	0	0	0	4	0	1	0	0	2011	2016
-arith_bigwit	nunchaku_ship	5	4	0	0	0	4	0	1	0	0	6016	6016
-arith_bigwit	nunchaku_smbc	1	4	0	0	0	4	0	1	0	0	2010	2012
-arith_bigwit	nunchaku_smbc	5	4	0	0	0	4	0	1	0	0	6017	6020
+datatype	nitpick	1	8	8	0	0	0	0	8	0	0	580	1385
+datatype	nitpick	5	8	8	0	0	0	0	8	0	0	577	5393
+datatype	nunchaku	1	8	6	0	0	2	0	8	0	0	552	1026
+datatype	nunchaku	5	8	7	0	0	1	0	8	0	0	631	5026
+datatype	nunchaku_ship	1	8	8	0	0	0	0	8	0	0	40	1026
+datatype	nunchaku_ship	5	8	8	0	0	0	0	8	0	0	69	5027
+datatype	nunchaku_smbc	1	8	7	0	0	1	0	8	0	0	81	1029
+datatype	nunchaku_smbc	5	8	8	0	0	0	0	8	0	0	73	5033
+arith_bigwit	nitpick	1	4	0	0	0	4	0	1	0	0	48	49
+arith_bigwit	nitpick	5	4	0	0	0	4	0	1	0	0	60	60
+arith_bigwit	nunchaku	1	4	0	0	0	4	0	1	0	0	1023	1024
+arith_bigwit	nunchaku	5	4	0	0	0	4	0	1	0	0	5021	5023
+arith_bigwit	nunchaku_ship	1	4	0	0	0	4	0	1	0	0	1022	1022
+arith_bigwit	nunchaku_ship	5	4	0	0	0	4	0	1	0	0	5025	5026
+arith_bigwit	nunchaku_smbc	1	4	0	0	0	4	0	1	0	0	1025	1028
+arith_bigwit	nunchaku_smbc	5	4	0	0	0	4	0	1	0	0	5023	5028
 
 == Overall (false goals: genuine-rate; true goals: spurious count; model losses) ==
-nitpick	1s	genuine 8/12 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 586ms
-nitpick	5s	genuine 8/12 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 588ms
-nunchaku	1s	genuine 7/12 (+0 quasi)	SPURIOUS 0	modelMiss 2	median 2010ms
-  !! MODEL MISSING: d3 (datatype) verdict=genuine
-  !! MODEL MISSING: b3 (arith_bigwit) verdict=genuine
-nunchaku	5s	genuine 8/12 (+0 quasi)	SPURIOUS 0	modelMiss 2	median 6014ms
-  !! MODEL MISSING: d3 (datatype) verdict=genuine
-  !! MODEL MISSING: b3 (arith_bigwit) verdict=genuine
-nunchaku_ship	1s	genuine 8/12 (+0 quasi)	SPURIOUS 0	modelMiss 1	median 1738ms
-  !! MODEL MISSING: d3 (datatype) verdict=genuine
-nunchaku_ship	5s	genuine 8/12 (+0 quasi)	SPURIOUS 0	modelMiss 1	median 948ms
-  !! MODEL MISSING: d3 (datatype) verdict=genuine
-nunchaku_smbc	1s	genuine 8/12 (+0 quasi)	SPURIOUS 0	modelMiss 1	median 940ms
-  !! MODEL MISSING: d3 (datatype) verdict=genuine
-nunchaku_smbc	5s	genuine 8/12 (+0 quasi)	SPURIOUS 0	modelMiss 1	median 4125ms
-  !! MODEL MISSING: d3 (datatype) verdict=genuine
+nitpick	1s	genuine 8/12 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 538ms
+nitpick	5s	genuine 8/12 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 546ms
+nunchaku	1s	genuine 6/12 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 1023ms
+nunchaku	5s	genuine 7/12 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 5019ms
+nunchaku_ship	1s	genuine 8/12 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 462ms
+nunchaku_ship	5s	genuine 8/12 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 1185ms
+nunchaku_smbc	1s	genuine 7/12 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 1022ms
+nunchaku_smbc	5s	genuine 8/12 (+0 quasi)	SPURIOUS 0	modelMiss 0	median 1402ms
