@@ -366,6 +366,18 @@ let pp_pb out (pb:problem): unit =
 let error_parse_model msg = raise (Parse_result_error msg)
 let error_parse_modelf msg = Utils.exn_ksprintf ~f:error_parse_model msg
 
+(* Failures of reading smbc's model, as opposed to failures of our own
+   encoding: the model is untrusted input, so these are contained one entry
+   at a time (see {!convert_model}).  [Out_of_scope] and [Conversion_error]
+   are about the problem we sent and stay fatal. *)
+let is_model_conversion_error = function
+  | Parse_result_error _
+  | TI.Undefined _ (* an id the model uses and the environment does not know *)
+  | Env.UndefinedID _
+  | T.No_head _
+  | T.ApplyError _ -> true
+  | _ -> false
+
 module StrMap = CCMap.Make(String)
 module StrTbl = CCHashtbl.Make(CCString)
 
@@ -612,7 +624,13 @@ let rec term_of_tip st ~env ?ty (penv:parse_env) (t:A.term): term =
       | None ->
         (match ty_of_branches () with
          | Some ty_u -> push_ty ~env st ty_u u; ty_u
-         | None -> T.ty_exn ~env u (* no recovery: fail as before *))
+         | None ->
+           (* every branch is a "default": nothing in the match names the
+              scrutinee's datatype, and the scrutinee has no type of its own *)
+           error_parse_modelf
+             "cannot find the datatype matched on in `@[%a@]`:@ \
+              the scrutinee has no type and no branch names a constructor"
+             A.pp_term t)
     in
     let tydef = match T.info_of_ty_exn ~env ty_u |> Env.def with
       | Env.Data (_, _, tydef) -> tydef
@@ -680,12 +698,22 @@ let rec term_of_tip st ~env ?ty (penv:parse_env) (t:A.term): term =
     in
     term_of_tip st ~env ?ty penv u
   | A.Fun (v,body) ->
+    let penv, v = typed_var_of_tip st penv v in
+    (* the expectation must agree with the domain smbc declared for the
+       lambda.  Disagreement means the expectation is wrong, so drop it: an
+       assertion here would turn a bad expectation into a lost verdict *)
     let ty_body = match ty with
       | Some ty_f ->
-        (match T.repr ty_f with TI.TyArrow (_, r) -> Some r | _ -> None)
+        (match T.repr ty_f with
+         | TI.TyArrow (dom, r) when T.equal dom (Var.ty v) -> Some r
+         | TI.TyArrow (dom, _) ->
+           Utils.warningf Utils.Warn_model_parsing_error
+             "expected a function on `@[%a@]`,@ but the model binds `@[%a@]`"
+             T.pp dom Var.pp_full v;
+           None
+         | _ -> None)
       | None -> None
     in
-    let penv, v = typed_var_of_tip st penv v in
     let body = term_of_tip st ~env ?ty:ty_body penv body in
     T.fun_ v body
   | A.Eq (a,b) ->
@@ -1039,7 +1067,21 @@ let convert_model ~env (m:A_res.model): (_,_) Model.t =
           `Ty (ty, dom)
         | A_res.Val (a,b) ->
           let a = term_of_tip st ~env empty_penv a in
-          `Val (a, term_of_tip st ~env ?ty:(E.to_opt (T.ty ~env a)) empty_penv b))
+          let ty_a = E.to_opt (T.ty ~env a) in
+          (* a value we cannot read costs that value -- not the verdict, not
+             the sibling backends, and not the rest of the model *)
+          let b =
+            try term_of_tip st ~env ?ty:ty_a empty_penv b
+            with e when is_model_conversion_error e ->
+              (match ty_a with
+                 | Some ty ->
+                   Utils.warningf Utils.Warn_model_parsing_error
+                     "cannot read the value of `@[%a@]`: %s"
+                     T.pp a (Printexc.to_string e);
+                   T.builtin (`Unparsable ty)
+                 | None -> raise e)
+          in
+          `Val (a, b))
       m
   in
   List.fold_left
