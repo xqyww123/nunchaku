@@ -645,7 +645,7 @@ let rec term_of_tip st ~env ?ty (penv:parse_env) (t:A.term): term =
               scrutinee's datatype, and the scrutinee has no type of its own *)
            error_parse_modelf
              "cannot find the datatype matched on in `@[%a@]`:@ \
-              the scrutinee has no type and no branch names a constructor"
+              the scrutinee has no type and no branch names a known constructor"
              A.pp_term t)
     in
     let tydef = match T.info_of_ty_exn ~env ty_u |> Env.def with
@@ -1153,7 +1153,9 @@ let parse_res ~env ~info (out:string) (errcode:int): (term,ty) Res.t * S.shortcu
          the non-zero exit code above.  Reporting it as [Res.Error] with a
          shortcut is worse than a crash of smbc itself: it stops the sibling
          backends, so a cvc5 answer to the same problem is lost to a defect
-         in smbc's output. *)
+         in smbc's output.  The catch-all is deliberate: a bug of ours while
+         reading one backend's answer should also cost that backend and not
+         the run, and [Printexc.to_string] keeps it visible in the message. *)
       let msg =
         Printf.sprintf "could not read smbc's output: %s" (Printexc.to_string e)
       in
