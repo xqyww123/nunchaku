@@ -201,5 +201,26 @@ fi
 echo "=== versions-$ISA_PLATFORM.txt ==="
 cat "$PWD/versions-$ISA_PLATFORM.txt"
 
+# Digest the two binaries HERE, on the leg that built them, and ship the
+# sidecars inside this leg's artifact.  release-attach.sh then verifies them
+# instead of recomputing, so the digest that reaches the release was taken
+# before the artifact round trip rather than after it.  On x86_64-cygwin that
+# is the only end-to-end check on the binary's bytes at all: no job on either
+# side ever executes a Cygwin binary, so the packaging side's content check is
+# otherwise the two bytes `MZ`.
+# coreutils spells it sha256sum (linux, Cygwin); macOS ships shasum instead.
+# Both print "<hex>  <name>", which is the format `sha256sum -c` reads.
+sha256_of () {
+  if command -v sha256sum > /dev/null 2>&1
+  then sha256sum "$@"
+  else shasum -a 256 "$@"
+  fi
+}
+for stem in nunchaku-bin smbc-bin; do
+  [ -s "$PWD/$stem" ] || die "$stem is not staged next to the smoke -- the leg cannot digest what it built"
+  ( cd "$PWD" && sha256_of "$stem" > "$stem.sha256" )
+  cat "$PWD/$stem.sha256"
+done
+
 echo
 echo "smoke OK for $ISA_PLATFORM"

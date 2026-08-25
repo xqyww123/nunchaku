@@ -214,7 +214,9 @@ jobs:
           name: nunchaku-${{ matrix.target.isa_platform }}
           path: |
             nunchaku-bin
+            nunchaku-bin.sha256
             smbc-bin
+            smbc-bin.sha256
             versions-${{ matrix.target.isa_platform }}.txt
           retention-days: 90
           # Artifacts are scoped to the RUN, and "Re-run all jobs" reuses the
@@ -525,7 +527,9 @@ jobs:
           name: nunchaku-${{ env.ISA_PLATFORM }}
           path: |
             nunchaku-bin
+            nunchaku-bin.sha256
             smbc-bin
+            smbc-bin.sha256
             versions-${{ env.ISA_PLATFORM }}.txt
           retention-days: 90
           overwrite: true   # see the unix leg's upload

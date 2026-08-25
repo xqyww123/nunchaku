@@ -126,15 +126,25 @@ case "${1-}" in
       [ -d "$leg" ] || die "the $plat leg produced no artifact ($leg is missing)"
       for stem in nunchaku-bin smbc-bin; do
         [ -s "$leg/$stem" ] || die "$plat: $leg/$stem is missing or empty"
+        # The digest comes from the leg that built the binary
+        # (release-smoke.sh), and is VERIFIED here rather than recomputed:
+        # recomputing would only certify whatever came back out of
+        # actions/download-artifact.  On x86_64-cygwin this is the only check
+        # on the binary's bytes anywhere in the two repositories -- nothing
+        # ever executes a Cygwin binary, so the packaging side's own content
+        # check is the two bytes `MZ`.
+        [ -s "$leg/$stem.sha256" ] \
+          || die "$plat: $leg/$stem.sha256 is missing -- release-smoke.sh did not digest what it built"
+        ( cd "$leg" && sha256sum -c "$stem.sha256" > /dev/null ) \
+          || die "$plat: $stem does not match the digest its own leg recorded"
         cp "$leg/$stem" "$OUT/$stem-$plat"
-        # Digests computed here, on one runner, rather than on each leg: this
-        # job runs on ubuntu-latest only, so there is no macOS `shasum` branch
-        # to carry and never execute.  The sidecar binds nothing about
-        # provenance -- one job writes both files -- it is a torn-download check
-        # for the packaging side, which reads it with `cut -d' ' -f1`.  Hashed
-        # with the staging directory as cwd so the recorded name is the bare
-        # asset name, as 0.5.2's was.
-        ( cd "$OUT" && sha256sum "$stem-$plat" > "$stem-$plat.sha256" )
+        # The released sidecar carries that same digest under the released
+        # name, so the hex a consumer checks is the one the producing leg
+        # measured.  The name is the bare asset name, as 0.5.2's was.
+        printf '%s  %s\n' "$(cut -d' ' -f1 < "$leg/$stem.sha256")" "$stem-$plat" \
+          > "$OUT/$stem-$plat.sha256"
+        ( cd "$OUT" && sha256sum -c "$stem-$plat.sha256" > /dev/null ) \
+          || die "$plat: the released $stem-$plat does not match the digest its leg recorded"
       done
       # Named for THIS platform, inside THIS platform's artifact: a leg that
       # wrote another platform's record cannot satisfy both halves.
