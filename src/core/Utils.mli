@@ -141,6 +141,7 @@ end
 type warning =
   | Warn_overlapping_match
   | Warn_model_parsing_error
+  | Warn_solver_unavailable
 
 val toggle_warning : warning -> bool -> unit
 (** Enable/disable the given warning *)

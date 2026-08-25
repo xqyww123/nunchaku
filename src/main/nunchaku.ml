@@ -355,7 +355,8 @@ let solver_usable_ sel =
 
 (* Solvers requested by an explicit --solvers but unavailable are reported
    (one aggregated stderr line): silently dropping arms would hide a broken
-   installation. *)
+   installation, which is also why the warning is on by default and has to be
+   turned off explicitly with [-W3 false]. *)
 let warn_unavailable_requested_ () =
   match !solvers with
   | None -> ()
@@ -365,8 +366,7 @@ let warn_unavailable_requested_ () =
       |> List.map string_of_solver_
     in
     if missing <> [] then
-      Format.eprintf "Warning: requested solver%s not available: %s@."
-        (if List.length missing > 1 then "s" else "")
+      Utils.warningf Utils.Warn_solver_unavailable "%s"
         (String.concat ", " missing)
 
 let make_cvc5 ~j () =

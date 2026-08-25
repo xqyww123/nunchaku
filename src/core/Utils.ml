@@ -250,15 +250,17 @@ end
 type warning =
   | Warn_overlapping_match
   | Warn_model_parsing_error
+  | Warn_solver_unavailable
 
 let pp_warn out = function
   | Warn_overlapping_match -> CCFormat.string out "overlapping pattern-match"
   | Warn_model_parsing_error -> CCFormat.string out "error when parsing model"
+  | Warn_solver_unavailable -> CCFormat.string out "solver not available"
 
 (* list of enabled warnings *)
 let warnings_ =
   ref
-    [ Warn_model_parsing_error ]
+    [ Warn_model_parsing_error; Warn_solver_unavailable ]
 
 let is_warning_enabled w = List.mem w !warnings_
 
@@ -296,6 +298,9 @@ let () =
       ("-W2"
       , Arg.Bool (toggle_warning Warn_model_parsing_error)
       , " <bool>: enable/disable warnings on model parsing errors");
+      ("-W3"
+      , Arg.Bool (toggle_warning Warn_solver_unavailable)
+      , " <bool>: enable/disable warnings on unavailable solvers");
     ]
 
 (** {2 Misc} *)
@@ -344,9 +349,13 @@ let ignore_catch f x =
   with _ -> ()
 
 let external_program ~env_var ~default =
-  match Sys.getenv_opt env_var with
-  | Some s when s <> "" -> s
-  | _ -> default
+  let set = Sys.getenv_opt env_var in
+  let prog = match set with Some s when s <> "" -> s | _ -> default in
+  (* the one place that answers "which binary did this run actually use, and
+     did the environment decide it?", for all five backends at once *)
+  debugf 3 "@[<2>%s is %s:@ using `%s`@]"
+    (fun k -> k env_var (if set = None then "not set" else "set") prog);
+  prog
 
 let external_program_available prog =
   let cmd =
