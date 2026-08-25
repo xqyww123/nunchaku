@@ -123,9 +123,18 @@ jobs:
           # out of a cache shared with the glibc build-matrix jobs
           dune-cache: false
 
-      # -t installs the test dependencies too -- release-build-unix.sh runs
-      # `dune runtest` on this platform's own toolchain.
-      - run: opam install -t . --deps-only
+      - name: Install build and test dependencies
+        run: |
+          # setup-ocaml caches ~/.opam, and a cache saved after a previous run
+          # of THIS job still carries the containers 2.8.1 pin the smbc step
+          # leaves behind -- which contradicts nunchaku's `containers >= 3.0`
+          # and makes the dependency resolution fail on a warm cache while
+          # working on a cold one.  The win-64 leg hit exactly this and fixes it
+          # the same way (see .github/scripts/w2-deps.sh).
+          opam pin remove -y containers || true
+          # -t installs the test dependencies too: release-build-unix.sh runs
+          # `dune runtest` on this platform's own toolchain.
+          opam install -t . --deps-only
 
       - name: Build nunchaku + smbc (version from VERSION, tested, stripped)
         run: opam exec -- .github/scripts/release-build-unix.sh

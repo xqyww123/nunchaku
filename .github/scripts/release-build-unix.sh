@@ -82,7 +82,13 @@ cp _build/default/src/main/nunchaku.exe nunchaku-bin
 # (opam.ocaml.org/packages/smbc is 404), hence the pin straight from the
 # upstream git tag; containers 2.x was archived out of the live repository,
 # hence the archive repo.
-opam repo add archive git+https://github.com/ocaml/opam-repository-archive
+#
+# `opam repo add` is guarded: setup-ocaml caches ~/.opam, so on a warm cache the
+# archive repo is already registered and a bare `add` fails rather than
+# shrugging -- which under `set -e` would take the whole leg down.
+if ! opam repo list --short | grep -qx archive; then
+  opam repo add archive git+https://github.com/ocaml/opam-repository-archive
+fi
 opam pin add -y -n "smbc.$SMBC_VERSION" \
   "git+https://github.com/c-cube/smbc.git#v$SMBC_VERSION"
 opam install -y smbc "containers.2.8.1"
