@@ -35,8 +35,17 @@ let cases =
       "escape"; "unterm";
       (* the same shapes in the get-value reply, which is decoded by a
          different function and used to abort the whole run *)
-      "gv_unterm"; "gv_eof"; "gv_notmodel"; "gv_esc" ]
-  @ [ (* latent decoder bugs that a stale cvc5 reaches once the domain guard
+      "gv_unterm"; "gv_eof"; "gv_notmodel"; "gv_esc";
+      (* a name we declared to cvc5 -- here the sort's own name -- passed off
+         as a domain element *)
+      "selfsort";
+      (* a string literal where a symbol belongs *)
+      "strname" ]
+  @ [ (* second positive control, on a compound witness sort: the shape the
+         declared and the compared spelling of a type must agree on.  Reply
+         recorded verbatim from cvc5 1.3.4. *)
+      { (cvc5 "compound") with problem = "easy_set.nun" };
+      (* latent decoder bugs that a stale cvc5 reaches once the domain guard
          stops the run from shortcutting on a fabricated model: they must be
          reported, not thrown.  Replies recorded verbatim from cvc5 1.2.0. *)
       { (cvc5 "decode_parse_err") with problem = "pseudo_prop.nun" };

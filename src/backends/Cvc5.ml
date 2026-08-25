@@ -32,7 +32,6 @@ let error_ e = raise (Error e)
 let errorf_ fmt = CCFormat.ksprintf fmt ~f:error_
 let cvc5_error_ msg = raise (Backend_err msg)
 let backend_errorf_ fmt = CCFormat.ksprintf fmt ~f:cvc5_error_
-let cvc5_errorf_ msg = CCFormat.ksprintf ~f:cvc5_error_ "@[in cvc5:@ %s@]" msg
 
 let () =
   Printexc.register_printer (function
@@ -213,19 +212,40 @@ let rec pp_gty ~decode out g =
         (pp_list ~sep:"_" (pp_gty ~decode))
         l
 
-(* The same ground type, spelled the way the problem printer's [pp_ty] declared
-   it to cvc5 -- which is how cvc5 echoes the sort of a domain element, as an
-   atom [a__] for a base sort and as a list [(to_ a_ b_)] for a compound one.
+(* The single description of how a ground type is spelled to cvc5: an atom
+   [a__] for a base sort, a list [(to_ a_ b_)] for a compound one.  The problem
+   printer emits it and the domain parser compares a reply against it, and both
+   go through here so the two spellings cannot drift apart -- if they did, every
+   compound witness sort would be rejected.
+
    [pp_gty] above is a different, lossy spelling of the same type: it mangles
    every non-alphanumeric character and flattens application to [_to__a__b__].
    It is right for building cvc5's constant-name prefixes and wrong for
    comparing against a reply, so the two must not be confused. *)
-let rec sexp_of_gty ~decode g : Sexp_lib.t =
+let rec sexp_of_gty_ ~name g : Sexp_lib.t =
   match Ty.view g with
   | FO.TyBuiltin b -> `Atom (CCFormat.sprintf "%a" pp_builtin_cvc5 b)
-  | FO.TyApp (id, []) -> `Atom (id_to_name ~decode id)
+  | FO.TyApp (id, []) -> `Atom (name id)
   | FO.TyApp (id, l) ->
-      `List (`Atom (id_to_name ~decode id) :: List.map (sexp_of_gty ~decode) l)
+      (* head first, then left to right: in the declaring direction [name]
+         allocates a name for an id it has not seen, so evaluation order is
+         what decides which id gets which name.  Neither constructor argument
+         order nor [List.map]'s order is specified, so neither is relied on. *)
+      let head = `Atom (name id) in
+      let args = List.rev (List.rev_map (sexp_of_gty_ ~name) l) in
+      `List (head :: args)
+
+(* declaring: printing an id for the first time is what names it *)
+let sexp_of_gty_decl ~decode = sexp_of_gty_ ~name:(id_to_name ~decode)
+
+(* comparing against a reply: registers nothing, so a rejected reply leaves no
+   trace.  An unnamed id here would mean comparing against a spelling cvc5 was
+   never given -- our invariant, not the solver's doing, hence [Error]. *)
+let sexp_of_gty ~decode =
+  sexp_of_gty_ ~name:(fun id ->
+      match ID.Tbl.find_opt decode.id_to_name id with
+      | Some n -> n
+      | None -> errorf_ "no name was declared to cvc5 for %a" ID.pp id)
 
 (* the prefix used by cvc5 for constants of the given type *)
 let const_of_ty ~decode gty =
@@ -254,12 +274,10 @@ let pp_problem out (decode, pb) =
     let name = Printf.sprintf "_select_%s_%d" (id_to_name ~decode c) n in
     Hashtbl.replace decode.name_to_id name (DataSelect (c, n));
     CCFormat.string out name
-  (* print type (a monomorphic type) in SMT *)
-  and pp_ty out ty =
-    match Ty.view ty with
-    | FO.TyBuiltin b -> pp_builtin_cvc5 out b
-    | FO.TyApp (f, []) -> pp_id out f
-    | FO.TyApp (f, l) -> fpf out "@[(%a@ %a)@]" pp_id f (pp_list pp_ty) l
+  (* print type (a monomorphic type) in SMT.  This is the declaration the
+     domain parser later compares a reply against, so it is that same
+     description rather than a second copy of it. *)
+  and pp_ty out ty = Sexp_lib.pp out (sexp_of_gty_decl ~decode ty)
   (* print type in SMT syntax *)
   and pp_ty_decl out ty =
     let args, ret = ty in
@@ -627,12 +645,20 @@ let parse_simple_model_ ~decode ~env : Sexp_lib.t -> (_, _) Model.t = function
    [(error "...")] is a two-atom list, so accepting bare atoms here would
    silently turn an error reply into a two-element domain.  TY is compared as a
    sexp, because for a compound sort cvc5 echoes a list. *)
+(* An SMT symbol, simple or [|…|]-quoted -- never a string literal, which the
+   lexer also hands over as an atom.  A name goes into the model and so onto
+   the user's stdout; a string literal there would let the solver put arbitrary
+   bytes in it. *)
+let is_symbol_atom s = String.length s > 0 && s.[0] <> '"'
+
 let parse_domain_elem_ ~decode ~gty : Sexp_lib.t -> string =
   let expected_ty = sexp_of_gty ~decode gty in
   function
-  | `List [ `Atom "as"; `Atom name; ty ] when ty = expected_ty -> name
+  | `List [ `Atom "as"; `Atom name; ty ]
+    when ty = expected_ty && is_symbol_atom name ->
+      name
   | s ->
-      backend_errorf_ "expected a domain element `(as _ %a)`, got `%a`"
+      backend_errorf_ "expected a domain element `(as <symbol> %a)`, got `%a`"
         Sexp_lib.pp expected_ty Sexp_lib.pp s
 
 let parse_domain_elems_ ~decode ~gty : Sexp_lib.t -> string list = function
@@ -644,7 +670,9 @@ let parse_domain_elems_ ~decode ~gty : Sexp_lib.t -> string list = function
         Sexp_lib.pp (`List l)
   | `List [] -> backend_errorf_ "cvc5 reported an empty domain"
   | `List l ->
-      let names = List.map (parse_domain_elem_ ~decode ~gty) l in
+      (* left-to-right, so the element named in a rejection is always the first
+         bad one; [List.map]'s order is unspecified *)
+      let names = List.rev (List.rev_map (parse_domain_elem_ ~decode ~gty) l) in
       (* the counter this parser replaces produced distinct names for free *)
       if List.length (CCList.sort_uniq ~cmp:String.compare names)
          < List.length names
@@ -673,14 +701,27 @@ let get_finite_domain_ ~print_model decode s witness_id =
       let id_of_name name =
         Utils.debugf ~section 3 "@[domain element: %s @]" (fun k -> k name);
         match Hashtbl.find_opt decode.name_to_id name with
-        | Some (ID id) when ID.Tbl.mem decode.symbols id ->
+        (* [id_to_name] holds exactly the names we declared to cvc5, so this is
+           the test that matches the message: a domain element must be a name
+           cvc5 invented, not one of ours.  Taking [decode.symbols] instead --
+           only the symbols we asked a value for -- let a reply name the type's
+           own sort, [(as a__ a__)], and pass. *)
+        | Some (ID id) when ID.Tbl.mem decode.id_to_name id ->
             backend_errorf_
               "cvc5 reported `%s` as a domain element, but it is a symbol of \
                the problem"
               name
         | Some (ID id) -> id
-        | Some (De_bruijn _ | DataTest _ | DataSelect _) ->
-            backend_errorf_ "not a valid domain element name: %s" name
+        | Some (De_bruijn _) ->
+            backend_errorf_
+              "cvc5 reported `%s` as a domain element, but it is a De Bruijn \
+               index"
+              name
+        | Some (DataTest _ | DataSelect _) ->
+            backend_errorf_
+              "cvc5 reported `%s` as a domain element, but it is a datatype \
+               tester or selector"
+              name
         | None -> (
             match find_atom_ ~decode name with ID id -> id | _ -> assert false)
       in

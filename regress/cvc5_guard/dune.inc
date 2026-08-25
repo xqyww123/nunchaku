@@ -506,6 +506,114 @@
   (diff gv_esc.expected gv_esc.out)))
 
 (rule
+ (targets selfsort.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../support/fake_solver.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  three.nun
+  reply_selfsort.txt)
+ (action
+  (with-stdout-to
+   selfsort.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_CVC5=%{exe:../support/fake_solver.exe}"
+    --setenv
+    "FAKE_REPLIES=%{dep:reply_selfsort.txt}"
+    --
+    --solvers
+    cvc5
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:three.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff selfsort.expected selfsort.out)))
+
+(rule
+ (targets strname.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../support/fake_solver.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  three.nun
+  reply_strname.txt)
+ (action
+  (with-stdout-to
+   strname.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_CVC5=%{exe:../support/fake_solver.exe}"
+    --setenv
+    "FAKE_REPLIES=%{dep:reply_strname.txt}"
+    --
+    --solvers
+    cvc5
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:three.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff strname.expected strname.out)))
+
+(rule
+ (targets compound.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../support/fake_solver.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  easy_set.nun
+  reply_compound.txt)
+ (action
+  (with-stdout-to
+   compound.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_CVC5=%{exe:../support/fake_solver.exe}"
+    --setenv
+    "FAKE_REPLIES=%{dep:reply_compound.txt}"
+    --
+    --solvers
+    cvc5
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:easy_set.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff compound.expected compound.out)))
+
+(rule
  (targets decode_parse_err.out)
  (deps
   %{exe:../support/run_case.exe}

@@ -1,0 +1,5 @@
+UNKNOWN
+(BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} cvc5 reported `a__` as a domain element, but it is a symbol of the problem)
+--- stderr ---
+rc=0

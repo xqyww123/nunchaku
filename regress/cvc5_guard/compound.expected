@@ -1,0 +1,30 @@
+SAT: {
+  type a := {$a_0}.
+  val B := Collect $$anon_fun_0.
+  val A := Collect $$anon_fun_1.
+  val minus :=
+    (fun (v1:set) (v2:set).
+       (if v1 = Collect $$anon_fun_1
+        then
+          if v2 = Collect $$anon_fun_0
+          then Collect $$anon_fun_1
+          else Collect $$anon_fun_0
+        else Collect $$anon_fun_0)).
+  val emptyset := Collect $$anon_fun_0.
+  val $$anon_fun_1 :=
+    (fun (v3:a). (v3 = $a_0 || ?__1 $$anon_fun_1 v3)).
+  val $$anon_fun_0 :=
+    (fun (v4:a). (~ v4 = $a_0 && ?__1 $$anon_fun_0 v4)).
+  val minus_prop :=
+    (fun (v5:a -> prop) (v6:a -> prop) (v7:a).
+       (if v5 = (fun (v8:a). rmember v9 v8)
+        then
+          if v6 = (fun (v10:a). rmember v11 v10)
+          then ~ v7 = $a_0 && ?__1 $$anon_fun_1 v7
+          else ?__2 v5 v6 v7
+        else ?__2 v5 v6 v7)).
+}
+{backend:cvc5, time:Ns,
+  message="options: OPTIONS"}
+--- stderr ---
+rc=0

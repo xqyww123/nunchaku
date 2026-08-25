@@ -44,7 +44,9 @@ let canonicalise re fmt s =
     s
 
 let re_unknown = Str.regexp "\\?__[0-9]+"
-let re_var = Str.regexp "v_[0-9]+/[0-9]+"
+(* a bound variable prints as name/id, and the id is the process-level counter:
+   [v_0/58], but also [x_1/173] and [set_0/77] *)
+let re_var = Str.regexp "[A-Za-z_][A-Za-z0-9_]*/[0-9]+"
 let re_time = Str.regexp "time:[0-9]+\\.[0-9]+s"
 let re_options = Str.regexp "message=\"options: [^\"]*\""
 

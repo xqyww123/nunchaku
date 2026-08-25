@@ -1,5 +1,5 @@
 UNKNOWN
 (BACKEND_ERROR {backend:cvc5, time:Ns,
-                 message="options: OPTIONS"} expected a domain element `(as _ a__)`, got `@a___0`)
+                 message="options: OPTIONS"} expected a domain element `(as <symbol> a__)`, got `@a___0`)
 --- stderr ---
 rc=0

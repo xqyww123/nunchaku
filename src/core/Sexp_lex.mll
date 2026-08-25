@@ -16,7 +16,6 @@ let newline = '\n' | "\r\n"
 let white = [' ' '\r' '\t'] | newline
 
 let comment_line = ';' [^ '\n']*
-let printable_char = [^ '\n']
 
 let num = ['0'-'9']
 let letter = (['a'-'z'] | ['A'-'Z'])
