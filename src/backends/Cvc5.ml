@@ -968,16 +968,36 @@ let solve ?(options = "") ?deadline ?(print = false) ?(print_model = false) ~env
         | Res.Sat (_, _) -> (r, S.Shortcut)
         | Res.Unsat i -> (Res.Unsat i, S.Shortcut)
         | Res.Unknown _ -> (r, S.No_shortcut)
-        | Res.Error (e, _) ->
+        (* A cvc5 defect costs cvc5 this arm, and not the run.  Ending the race
+           here would stop smbc and the other four arms, so an answer one of
+           them was about to give is lost to a fault in this one -- the
+           argument [Smbc.parse_res] already makes for the other backend, and
+           §18's for the scheduler.  Reported as an [Unknown] carrying the
+           error rather than as [Res.Error] because that is the same decision,
+           not a second one: [Close_task] and [process_res_] reject by name a
+           non-[Unknown] result that did not end the race.  The command line
+           stays in the debug line and out of the reported reason, which the
+           caller sees. *)
+        | Res.Error (e, info) ->
             Utils.debugf ~lock:true ~section 1
               "@[<2>error while running cvc5@ with `%s`:@ @[%s@]@]" (fun k ->
                 k cmd (Printexc.to_string e));
-            (r, S.Shortcut))
+            let msg =
+              Printf.sprintf "error while running cvc5: %s"
+                (Printexc.to_string e)
+            in
+            (Res.Unknown [ Res.U_backend_error (info, msg) ], S.No_shortcut))
     |> S.Fut.map (function
          | E.Ok x -> fst x
+         (* an exception escaping the whole exchange with cvc5: same reasoning
+            as above, same shape *)
          | E.Error e ->
              let info = mk_info ~options decode in
-             (Res.Error (e, info), S.Shortcut)))
+             let msg =
+               Printf.sprintf "error while running cvc5: %s"
+                 (Printexc.to_string e)
+             in
+             (Res.Unknown [ Res.U_backend_error (info, msg) ], S.No_shortcut)))
 
 let is_available () =
   let res = Utils.external_program_available (cvc5_program_ ()) in

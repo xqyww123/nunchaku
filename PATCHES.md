@@ -1265,3 +1265,56 @@ repro, as "the same number".
   problems make smbc's assertion fire is a property of smbc and of the
   encoding, and it will drift; the case would still fail if the flag went
   away, which is the only thing it claims.
+
+## 27. A cvc5 fault costs cvc5's arm, not the race (commit: TBD)
+
+- **Motivation**: §18 established that one failing backend must not discard
+  the others' answers, and fixed the half of it that lives in the scheduler.
+  cvc5's own two error paths still ended the race: `solve` returned
+  `S.Shortcut` both for a `Res.Error` from reading cvc5's reply and for an
+  exception escaping the whole exchange with it.  A shortcut stops smbc and
+  the other four arms, so an answer one of them was about to give is thrown
+  away because of a fault in this one.  The mirror image of this is not
+  hypothetical on the fork's own workload: smbc dies with an assertion on
+  eleven of the seventy-nine captured problems, and those eleven runs survive
+  to be answered by cvc5 only because smbc's side was already written this
+  way (`Smbc.parse_res`, whose comment makes the argument).
+- **Repro**, and it is much larger than expected -- the study that proposed
+  this change predicted "0 occurrences on this corpus by construction", which
+  is true only of a cvc5 that works.  Point `NUNCHAKU_CVC5` at `/bin/false`,
+  the shape of any cvc5 that starts and immediately does not: writing the
+  problem to it raises `Sys_error("Broken pipe")`, which escapes the
+  exchange.  Over all 79 problems at `--timeout 1`, before: **42 of 79
+  produce no output at all and exit 1**, and 13 of those are goals smbc
+  answers on its own (10 `SAT`, 3 `UNSAT`).  After: **0 of 79 crash**, every
+  run exits 0, and 31 goals are answered instead of 18.  A single broken
+  solver used to cost the caller every goal the other one could still do.
+- **Fix**: both paths report `Res.Unknown [Res.U_backend_error (info, msg)]`
+  with `S.No_shortcut`.  Changing the result constructor is not decoration on
+  top of changing the shortcut, it is the same decision: `Close_task`'s own
+  comment and `process_res_` reject **by name** a non-`Unknown` result that
+  did not end the race, so `Res.Error` with `No_shortcut` would trade this
+  crash for a different one.  The cvc5 command line stays in the `--debug 1`
+  line and out of the reason the caller is shown, which would otherwise carry
+  an absolute path into every golden that ever hits this path.
+- **Verification**: with a *working* cvc5 the changed code is never entered,
+  and the corpus says so -- verdicts identical on all 79 problems, 5
+  interleaved rounds at 1 s and 2 at 5 s, paired median +0.20 ms and -0.10 ms,
+  i.e. nothing.  Directly, by injecting a fault at each of the two sites in a
+  throw-away build: before, a `Res.Error` from reading the reply ends the run
+  with `Out of memory` and an escaping exception ends it with
+  `failure: …`, in both cases discarding smbc's `SAT`; after, smbc's `SAT` is
+  the answer, and with `--solvers cvc5` alone the run reports
+  `UNKNOWN (BACKEND_ERROR … error while running cvc5: …)`.
+- **What this deliberately does not decide**: `read_res_` re-raises
+  `Out_of_memory` (and `Sys.Break`, which nothing raises -- `Sys.catch_break`
+  is never called) rather than reporting it as a backend error, and `res`
+  then turns it into `Res.Error`.  Under a real out-of-memory the run now
+  degrades to `UNKNOWN` with a reason instead of stopping.  That follows the
+  policy §18 set and the one `Smbc.parse_res` follows, and it is recorded
+  here rather than special-cased, because splitting the error path by
+  exception type is a policy decision and not this entry's.
+- **Where the asymmetry now is**: `Smbc.ml`'s own `S.Fut.Done (E.Error e)`
+  and `S.Fut.Fail e` still answer `Res.Error … S.Shortcut`, so smbc is now
+  the less isolated of the two at that site.  Out of scope here, and named so
+  that whoever closes it can find it.
