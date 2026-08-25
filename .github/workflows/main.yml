@@ -438,6 +438,10 @@ jobs:
           # the PE header with `od` (it never calls `file` -- that is only in
           # the *-linux branch, which this leg does not reach); `file` is used
           # by w2-build.sh and w2-smbc.sh, both of which run under `set -e`.
+          # sha256sum is release-smoke.sh's, which digests both binaries on this
+          # leg through solver-pins.sh's sha256_of; Cygwin's coreutils provides
+          # it, and the digest() there refuses an empty or short hash rather
+          # than writing a sidecar the artifact hop cannot be checked against.
           # Listing them here turns a missing tool into a one-line diagnosis at
           # minute five instead of a confusing failure at minute two hundred
           # and fifty.

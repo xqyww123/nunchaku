@@ -82,6 +82,12 @@ asset_names () {  # <isabelle-platform>
 }
 
 SRC_ROOT=${SRC_ROOT:-$PWD}
+# Check before sourcing: every subcommand needs the pins, and a raw `source`
+# failure from the wrong directory is a bash line number rather than an
+# instruction.  This is the case the release procedure warns about (--list is
+# typed by hand, from whichever checkout the operator happens to be in).
+[ -r "$SRC_ROOT/.github/scripts/solver-pins.sh" ] \
+  || die "$SRC_ROOT does not look like the fork checkout: no .github/scripts/solver-pins.sh.  Run from the fork, or set SRC_ROOT to it."
 # shellcheck source=.github/scripts/solver-pins.sh
 . "$SRC_ROOT/.github/scripts/solver-pins.sh"
 
@@ -224,12 +230,22 @@ $ids"
     draft=${ids##* }
     echo "release id for $TAG: $id (draft: $draft)"
 
-    # REFUSE, rather than re-upload, once the release is out of draft.  A tag
-    # run that is re-run wholesale rebuilds binaries that are not
-    # reproducible, so uploading them over a published release would leave the
-    # conda channel's immutable packages certified by bytes the release no
-    # longer serves -- with every gate green, because nothing downstream
-    # compares the two.  Recovery for a published release is a new patch
+    # REFUSE, rather than re-upload, once the release is out of draft.  Two
+    # reasons, and only the second is what the guard rests on.
+    #
+    # (1) A rebuild is not bit-for-bit.  Measured 2026-08-26 on the maintainer's
+    # machine: two builds of one commit with `rm -rf _build` between them differ
+    # in 89 bytes -- the GNU build-id note plus three digest-shaped regions.  A
+    # rebuild that restores from dune's shared cache instead of compiling can of
+    # course come back identical, which is why this is stated as measured on a
+    # cold build rather than as a property of the project.
+    #
+    # (2) Whether or not the bytes match, nothing downstream compares them.  The
+    # conda packages are immutable and their digests were taken once, from the
+    # assets that were on the release at the time; replacing a published asset
+    # ends that correspondence silently, with every gate still green.  That
+    # holds even for an identical rebuild, so it -- not (1) -- is the reason.
+    # Recovery for a published release is a new patch
     # version, not a second pass over this one (RELEASE_CHECKLIST.md section 9
     # step 3).
     if [ "$draft" != true ]; then
@@ -249,7 +265,7 @@ $ids"
         exit 0
       fi
       diff -u contract.txt uploaded.txt || true
-      die "the release for $TAG is already published and does not carry the contract; its assets must not be replaced with freshly built, differing binaries -- fix forward with a new patch version (RELEASE_CHECKLIST.md section 9 step 3)"
+      die "the release for $TAG is already published and does not carry the contract; its assets must not be replaced with freshly built, differing binaries -- fix forward with a new patch version (RELEASE_CHECKLIST.md section 9, the release-run plan, step 3 'Wait for the fork's release-assets job')"
     fi
 
     # --clobber is KEPT, deliberately.  The recovery path RELEASE_CHECKLIST.md
