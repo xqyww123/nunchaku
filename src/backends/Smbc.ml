@@ -436,21 +436,30 @@ let set_type (st:parse_state) (id:ID.t) (ty:ty): unit =
   )
 
 (* "these two unknowns share a type, whatever it turns out to be".
-   The union carries both the class type and the poison flag. *)
+   The union carries both the class type and the poison flag.  The type
+   moves *before* the poison does, which is what keeps the invariant below:
+   [set_type] only poisons a root that already has a type, so after the move
+   [rb] has one whether it was poisoned before, by the move, or by [ra]. *)
 let same_type (st:parse_state) (a:ID.t) (b:ID.t): unit =
   let ra = uf_find st a and rb = uf_find st b in
   if not (ID.equal ra rb) then (
+    (match ID.Tbl.get st.uf_ty ra with
+       | Some ty -> ID.Tbl.remove st.uf_ty ra; set_type st rb ty
+       | None -> ());
     ID.Tbl.replace st.uf_parent ra rb;
-    if ID.Tbl.mem st.uf_poison ra then ID.Tbl.replace st.uf_poison rb ();
-    match ID.Tbl.get st.uf_ty ra with
-      | Some ty -> ID.Tbl.remove st.uf_ty ra; set_type st rb ty
-      | None -> ()
+    if ID.Tbl.mem st.uf_poison ra then ID.Tbl.replace st.uf_poison rb ()
   )
 
 (* the class's type; [None] for a poisoned class, which has no safe type *)
 let type_of (st:parse_state) (id:ID.t): ty option =
   let r = uf_find st id in
   if ID.Tbl.mem st.uf_poison r then None else ID.Tbl.get st.uf_ty r
+
+(* the type to name in the [`Unparsable] that replaces a poisoned class.
+   Invariant: a poisoned root always carries one (see {!same_type}), so this
+   is [Some] wherever {!repair_holes} asks for it. *)
+let poison_type (st:parse_state) (id:ID.t): ty option =
+  ID.Tbl.get st.uf_ty (uf_find st id)
 
 (* the id of the smbc unknown named [s]; repeated occurrences share one id *)
 let unknown_id (st:parse_state) (s:string): ID.t =
@@ -494,38 +503,59 @@ let id_of_tip (st:parse_state) (penv:parse_env) (s:string):
    type has already been attached to it.  Constraints are about the
    unknown's identity, not about what conversion happened to learn first:
    keying on the untyped form alone silently drops every constraint on an
-   unknown that has already picked up a type somewhere. *)
-let unknown_head_ (t:term): (ID.t * term list) option =
+   unknown that has already picked up a type somewhere.  Returns its id, the
+   type already attached to it, and its arguments. *)
+let unknown_head (t:term): (ID.t * ty option * term list) option =
   let hd u = match T.repr u with
     | TI.Builtin (`Undefined_self c) ->
-      (match T.repr c with TI.Const id -> Some id | _ -> None)
-    | TI.Builtin (`Undefined_atom (id,_)) -> Some id
+      (match T.repr c with TI.Const id -> Some (id, None) | _ -> None)
+    | TI.Builtin (`Undefined_atom (id,ty)) -> Some (id, Some ty)
     | _ -> None
   in
-  match T.repr t with
-    | TI.App (h, args) -> (match hd h with Some id -> Some (id, args) | None -> None)
-    | _ -> (match hd t with Some id -> Some (id, []) | None -> None)
-
-(* Recorded, not fixed: [E.to_opt (T.ty ~env _)] below and at the sites that
-   read a converted term's type reads "this term has no type we can name",
-   but [T.ty] (TermInner.ml:1679-1681) is `try … with e -> err_of_exn e`,
-   so it collapses *every* exception -- an unknown id, an ill-typed
-   application, an internal failure -- into the same [None].  A malformed
-   model and a hole we simply have not typed yet are indistinguishable here.
-   Two of the four sites that had this shape disappeared when the
-   re-conversions were deleted; the remaining ones only *learn*, so a
-   collapsed exception costs a recovery and never a verdict. *)
+  let args = match T.repr t with TI.App (_, args) -> args | _ -> [] in
+  let head = match T.repr t with TI.App (h, _) -> h | _ -> t in
+  match hd head with
+    | Some (id, ty) -> Some (id, ty, args)
+    | None -> None
 
 (* learn "the already-converted term [t] was expected to have type [ty]".
-   O(α(n)) and converts nothing. *)
-let push_ty ~env (st:parse_state) (ty:ty) (t:term): unit =
-  match unknown_head_ t with
+   O(α(n)) and converts nothing.
+
+   Recorded, not fixed: [E.to_opt (T.ty ~env _)] here and at the other sites
+   that read a converted term's type reads "this term has no type we can
+   name", but [T.ty] (TermInner.ml:1679-1681) is
+   `try … with e -> err_of_exn e`, so it collapses *every* exception -- an
+   unknown id, an ill-typed application, an internal failure -- into the same
+   [None].  A malformed model and a hole we simply have not typed yet are
+   indistinguishable here.  Two of the four sites that had this shape
+   disappeared when the re-conversions were deleted; the remaining ones only
+   *learn*, so a collapsed exception costs a recovery and never a verdict. *)
+let set_term_type ~env (st:parse_state) (t:term) (ty:ty): unit =
+  match unknown_head t with
     | None -> ()
-    | Some (id, []) -> set_type st id ty
-    | Some (id, args) ->
+    | Some (id, _, []) -> set_type st id ty
+    | Some (id, _, args) ->
       (match CCList.all_some (List.map (fun a -> E.to_opt (T.ty ~env a)) args) with
         | Some tys -> set_type st id (T.ty_arrow_l tys ty)
         | None -> ())
+
+(* an unknown in head position: synthesise its arrow type from the argument
+   types and the expected result type (the same inference
+   {!ElimTypes.decode_term} performs); nothing is invented.  With any
+   component missing, keep the opaque hole.  [args = []] is the degenerate
+   case and gives the unknown [ty] itself. *)
+let unknown_applied ~env (st:parse_state) ?ty (id:ID.t) (args:term list): term =
+  let head = match ty with
+    | Some ret ->
+      (match CCList.all_some (List.map (fun a -> E.to_opt (T.ty ~env a)) args) with
+         | Some tys ->
+           let ty_h = T.ty_arrow_l tys ret in
+           set_type st id ty_h;
+           T.builtin (`Undefined_atom (id, ty_h))
+         | None -> T.undefined_self (T.const id))
+    | None -> T.undefined_self (T.const id)
+  in
+  T.app head args
 
 (* Every [A.term] node is converted exactly once: no call below takes an
    argument another call already took.  Type information travels two ways,
@@ -543,22 +573,7 @@ let rec term_of_tip st ~env ?ty (penv:parse_env) (t:A.term): term =
   | A.App (f,l) ->
     (match id_of_tip st penv f with
      | `Undef id ->
-       (* unknown in head position: synthesize its arrow type from the
-          argument types and the expected result type (the same inference
-          {!ElimTypes.decode_term} performs); nothing is invented.  With any
-          component missing, keep the old opaque hole. *)
-       let l = List.map (term_of_tip st ~env penv) l in
-       let head = match ty with
-         | Some ret ->
-           (match CCList.all_some (List.map (fun a -> E.to_opt (T.ty ~env a)) l) with
-            | Some tys ->
-              let ty_h = T.ty_arrow_l tys ret in
-              set_type st id ty_h;
-              T.builtin (`Undefined_atom (id, ty_h))
-            | None -> T.undefined_self (T.const id))
-         | None -> T.undefined_self (T.const id)
-       in
-       T.app head l
+       unknown_applied ~env st ?ty id (List.map (term_of_tip st ~env penv) l)
      | _ ->
        let f = term_of_id st penv f in
        (* expected type of each argument, from the head's type when known *)
@@ -579,16 +594,7 @@ let rec term_of_tip st ~env ?ty (penv:parse_env) (t:A.term): term =
     in
     (match undef_head with
      | Some id ->
-       (* unknown head of a unary application: same synthesis as A.App *)
-       let a = term_of_tip st ~env penv a in
-       let head = match ty, E.to_opt (T.ty ~env a) with
-         | Some ret, Some ty_a ->
-           let ty_h = T.ty_arrow_l [ty_a] ret in
-           set_type st id ty_h;
-           T.builtin (`Undefined_atom (id, ty_h))
-         | _ -> T.undefined_self (T.const id)
-       in
-       T.app head [a]
+       unknown_applied ~env st ?ty id [term_of_tip st ~env penv a]
      | None ->
        (* propagate the expected type into the function: converting the
           argument first gives its type, and [ty_a -> ty] is the function's
@@ -607,7 +613,7 @@ let rec term_of_tip st ~env ?ty (penv:parse_env) (t:A.term): term =
          match E.to_opt (T.ty ~env f) with
            | Some ty_f ->
              (match T.ty_unfold ty_f with
-                | _, ty_a :: _, _ -> push_ty ~env st ty_a a0
+                | _, ty_a :: _, _ -> set_term_type ~env st a0 ty_a
                 | _ -> ())
            | None -> ()
        );
@@ -633,7 +639,7 @@ let rec term_of_tip st ~env ?ty (penv:parse_env) (t:A.term): term =
       | Some ty_u -> ty_u
       | None ->
         (match ty_of_branches () with
-         | Some ty_u -> push_ty ~env st ty_u u; ty_u
+         | Some ty_u -> set_term_type ~env st u ty_u; ty_u
          | None ->
            (* every branch is a "default": nothing in the match names the
               scrutinee's datatype, and the scrutinee has no type of its own *)
@@ -733,12 +739,12 @@ let rec term_of_tip st ~env ?ty (penv:parse_env) (t:A.term): term =
     let b0 = term_of_tip st ~env penv b in
     (* only bare heads: for [(?f x) = (?g y)] it is the *results* that share
        a type, not the heads *)
-    (match unknown_head_ a0, unknown_head_ b0 with
-     | Some (ia, []), Some (ib, []) -> same_type st ia ib
+    (match unknown_head a0, unknown_head b0 with
+     | Some (ia, _, []), Some (ib, _, []) -> same_type st ia ib
      | _ -> ());
     (match E.to_opt (T.ty ~env a0), E.to_opt (T.ty ~env b0) with
-     | Some ty_a, _ -> push_ty ~env st ty_a b0
-     | _, Some ty_b -> push_ty ~env st ty_b a0
+     | Some ty_a, _ -> set_term_type ~env st b0 ty_a
+     | _, Some ty_b -> set_term_type ~env st a0 ty_b
      | None, None -> ());
     T.No_simp.eq a0 b0
   | A.Imply (a,b) ->
@@ -754,12 +760,12 @@ let rec term_of_tip st ~env ?ty (penv:parse_env) (t:A.term): term =
     let l = List.map (term_of_tip st ~env penv) l in
     (match
        CCList.filter_map
-         (fun t -> match unknown_head_ t with Some (i, []) -> Some i | _ -> None) l
+         (fun t -> match unknown_head t with Some (i, _, []) -> Some i | _ -> None) l
      with
       | i0 :: rest -> List.iter (same_type st i0) rest
       | [] -> ());
     (match CCList.find_map (fun t -> E.to_opt (T.ty ~env t)) l with
-      | Some ty_elt -> List.iter (push_ty ~env st ty_elt) l
+      | Some ty_elt -> List.iter (fun t -> set_term_type ~env st t ty_elt) l
       | None -> ());
     CCList.diagonal l
     |> List.map (fun (a,b) -> T.No_simp.neq a b)
@@ -998,23 +1004,32 @@ module A_res = A.Smbc_res
 let repair_holes (st:parse_state) (t:term): term =
   let bind () v = (), v in
   let rec aux () t =
-    match T.repr t with
-      | TI.Builtin (`Undefined_atom (id, ty)) when is_poisoned st id ->
-        (* the class carries two types; never let one identity stand for
-           both.  [`Unparsable] is what model consumers already understand *)
-        T.builtin (`Unparsable ty)
-      | _ ->
-        match unknown_head_ t with
-          | Some (id, args) ->
-            (match type_of st id with
-               (* the arity guard: a base-typed entry spliced into head
-                  position would yield an ill-typed application *)
-               | Some ty when
-                   (let _, ty_args, _ = T.ty_unfold ty in
-                    List.length ty_args >= List.length args) ->
-                 T.app (T.builtin (`Undefined_atom (id, ty))) (List.map (aux ()) args)
-               | _ -> T.map ~f:aux ~bind () t)
-          | None -> T.map ~f:aux ~bind () t
+    match unknown_head t with
+      | Some (id, ty_here, args) when is_poisoned st id ->
+        (* The class carries two types; never let one identity stand for
+           both.  Every occurrence goes, including one that conversion left
+           untyped because its type only arrived later: leaving the opaque
+           `?__ ?name` here would cost Isabelle the whole model block, which
+           is the failure [`Unparsable] exists to avoid.  Name the type the
+           occurrence knows, or the one the class was poisoned with. *)
+        let ty_poison = match ty_here with
+          | Some _ -> ty_here
+          | None -> poison_type st id
+        in
+        (match ty_poison with
+           | Some ty ->
+             T.app (T.builtin (`Unparsable ty)) (List.map (aux ()) args)
+           | None -> T.map ~f:aux ~bind () t)
+      | Some (id, _, args) ->
+        (match type_of st id with
+           (* the arity guard: a base-typed entry spliced into head
+              position would yield an ill-typed application *)
+           | Some ty when
+               (let _, ty_args, _ = T.ty_unfold ty in
+                List.length ty_args >= List.length args) ->
+             T.app (T.builtin (`Undefined_atom (id, ty))) (List.map (aux ()) args)
+           | _ -> T.map ~f:aux ~bind () t)
+      | None -> T.map ~f:aux ~bind () t
   in
   aux () t
 

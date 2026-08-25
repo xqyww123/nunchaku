@@ -16,6 +16,9 @@ m_uau	m_uau	two	-	opaque
 m_cross	m_cross	two	-	recovered
 m_cross2	m_cross2	two	-	recovered
 m_classconf	m_classconf	two	-	conflict
+poison_untyped	poison_untyped	two	-	conflict
+eq_app_bare	eq_app_bare	distp	-	conflict
+eq_arity_conf	eq_arity_conf	distp	-	conflict
 m_defonly	m_defonly	nest	-	contained
 m_defonly2	m_defonly2	headpos	-	recovered
 m_defonly3	m_defonly3	headpos	-	contained

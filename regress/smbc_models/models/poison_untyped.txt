@@ -1,0 +1,6 @@
+(result SAT
+  :model ((type a_ ($a__0 $a__1))
+          (type b_ ($b__0 $b__1))
+          (val ys_ (ite (= ?w1 ?w2) $b__0 $b__1))
+          (val xs_ ?w1)
+          (val f_ (lambda ((z a_)) ?w2))))

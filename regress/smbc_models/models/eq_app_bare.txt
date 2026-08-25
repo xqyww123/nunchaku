@@ -1,0 +1,4 @@
+(result SAT
+  :model ((type a_ ($a__0 $a__1))
+          (val c_ (?f $a__0))
+          (val q_ (= ?f (?f $a__0)))))

@@ -118,6 +118,29 @@ learned the hard way:
   standing for both types. This model then fails decision-tree
   conversion for an unrelated reason, so the run ends as
   `UNKNOWN (BACKEND_ERROR …)` with exit 0; that is the case below.
+- **poison_untyped** — the same conflict, but reached in the order that
+  leaves the occurrences *untyped at conversion time*: the entry holding
+  `(= ?w1 ?w2)` is read first, and the two entries that type the class come
+  after. An occurrence like this used to escape the poisoning and print as
+  the opaque `?__ ?w1` — the very token `?__unparsable` exists to avoid,
+  since it costs Isabelle the whole model block. Expect no opaque hole
+  anywhere in the output.
+- **eq_app_bare** — `?f` used both bare and applied in one equation, so the
+  class holds `a_ -> a_` and `a_ -> a_ -> a_`. Both occurrences must be
+  poisoned, including the applied one, whose arguments are kept:
+  `(?__unparsable a_ -> a_) $a__0`.
+- **eq_arity_conf** — `?f` applied at two different arities. Same
+  expectation. Worth knowing what this looked like before the release: it
+  printed `?__40 $a__0 $a__0` with `?__40 : a_ -> a_`, i.e. one identity at
+  one type applied at another — an ill-typed model, silently.
+
+A note on all four: two occurrences of one poisoned class that end up with
+the same type print as the same term, and `dt_of_term` then decides
+`(= x x)` structurally and folds the enclosing `if` to its `then` branch.
+That folding is not new and is not specific to holes — pristine nunchaku
+folds `(if (= $b__0 $b__0) then a else b)` to `a` in the same place — but a
+reader of `poison_untyped`'s output should know that is where the `if`
+went.
 
 ### contained — the entry is lost, nothing else is
 
