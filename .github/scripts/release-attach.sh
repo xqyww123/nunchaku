@@ -230,22 +230,19 @@ $ids"
     draft=${ids##* }
     echo "release id for $TAG: $id (draft: $draft)"
 
-    # REFUSE, rather than re-upload, once the release is out of draft.  Two
-    # reasons, and only the second is what the guard rests on.
+    # REFUSE, rather than re-upload, once the release is out of draft.  The
+    # reason is NOT that a rebuild differs: measured 2026-08-26, three cold
+    # builds of one commit (`rm -rf _build`, `DUNE_CACHE=disabled`) gave one
+    # sha256.  (An earlier note here claimed 89 differing bytes; that compared a
+    # stale incremental tree, which still carried a previous commit's sha, with
+    # a fresh one.  Clear `_build` before measuring this.)
     #
-    # (1) A rebuild is not bit-for-bit.  Measured 2026-08-26 on the maintainer's
-    # machine: two builds of one commit with `rm -rf _build` between them differ
-    # in 89 bytes -- the GNU build-id note plus three digest-shaped regions.  A
-    # rebuild that restores from dune's shared cache instead of compiling can of
-    # course come back identical, which is why this is stated as measured on a
-    # cold build rather than as a property of the project.
-    #
-    # (2) Whether or not the bytes match, nothing downstream compares them.  The
+    # The reason is that nothing downstream compares the bytes at all.  The
     # conda packages are immutable and their digests were taken once, from the
-    # assets that were on the release at the time; replacing a published asset
-    # ends that correspondence silently, with every gate still green.  That
-    # holds even for an identical rebuild, so it -- not (1) -- is the reason.
-    # Recovery for a published release is a new patch
+    # assets that were on the release at that moment; replacing a published
+    # asset ends that correspondence silently, with every gate still green.
+    # That holds however reproducible the build is, which is why the guard
+    # rests on it.  Recovery for a published release is a new patch
     # version, not a second pass over this one (RELEASE_CHECKLIST.md section 9
     # step 3).
     if [ "$draft" != true ]; then
@@ -265,7 +262,7 @@ $ids"
         exit 0
       fi
       diff -u contract.txt uploaded.txt || true
-      die "the release for $TAG is already published and does not carry the contract; its assets must not be replaced with freshly built, differing binaries -- fix forward with a new patch version (RELEASE_CHECKLIST.md section 9, the release-run plan, step 3 'Wait for the fork's release-assets job')"
+      die "the release for $TAG is already published and does not carry the contract; its assets must not be replaced with freshly built, differing binaries -- fix forward with a new patch version -- unless this object was created by hand and carries no assets, which can be deleted (RELEASE_CHECKLIST.md section 9, run-plan step 3)"
     fi
 
     # --clobber is KEPT, deliberately.  The recovery path RELEASE_CHECKLIST.md
