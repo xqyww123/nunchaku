@@ -592,7 +592,7 @@ let make_model_pipeline () =
   in
   pipe
 
-let process_res_ r =
+let process_res_ ~n_tasks r =
   let module Res = Problem.Res in
   (* the results that did not end the race are unknown-like (+timeout
      +out_of_scope), so their reasons can be concatenated: [close_task]
@@ -608,20 +608,40 @@ let process_res_ r =
             "@[<2>task reported `%a`@ without ending the race@]" Res.pp_head r)
       l
   in
+  (* the scheduler speaks in its own name here: it knows neither which
+     backend raised nor which ones it killed at the deadline *)
+  let scheduler_info () =
+    Res.mk_info ~backend:"scheduler" ~time:(Utils.Time.total ()) ()
+  in
   (* a task that raised produced no result at all; it still gets a line in
      the diagnostics, since a bare `unknown` would hide a broken backend *)
   let reason_of_failure e =
-    Res.U_backend_error
-      (Res.mk_info ~backend:"?" ~time:(Utils.Time.total ()) (),
-       Printexc.to_string e)
+    Res.U_backend_error (scheduler_info (), Printexc.to_string e)
   in
   match r with
     | Scheduling.Res_fail e -> E.fail (Printexc.to_string e)
-    | Scheduling.Res_list ([], _) -> E.fail "no task succeeded"
-    | Scheduling.Res_list (l, fails) ->
-      E.return
-        (Res.Unknown (reasons_of_results l @ List.map reason_of_failure fails))
     | Scheduling.Res_one r -> E.return r
+    | Scheduling.Res_list (l, fails) ->
+      (* the pool prepends its failures, so the first one to raise is last *)
+      let fails = List.rev fails in
+      begin match l, fails with
+        | [], (e :: _) when List.length fails = n_tasks ->
+          (* every single task raised: that is a broken installation, and
+             loud is the right answer -- there is nothing else to report *)
+          E.fail (Printexc.to_string e)
+        | [], _ ->
+          (* nobody reported a result, so the tasks that did not raise were
+             killed at the deadline: any task that finishes reports at least
+             an `unknown`.  The failures still get their line: a broken
+             backend must not become invisible behind a timeout *)
+          E.return
+            (Res.Unknown
+               (Res.U_timeout (scheduler_info ())
+                :: List.map reason_of_failure fails))
+        | l, _ ->
+          E.return
+            (Res.Unknown (reasons_of_results l @ List.map reason_of_failure fails))
+      end
 
 (* run the pipeline on this problem, then run tasks, and return the
    result *)
@@ -636,7 +656,7 @@ let run_tasks ~j ~deadline pipe pb =
     | [] -> E.return (Res.Unknown [])
     | _::_ ->
       let res = Scheduling.run ~j ~deadline tasks in
-      process_res_ res
+      process_res_ ~n_tasks:(List.length tasks) res
 
 (* negate the goal *)
 let negate_goal stmts =

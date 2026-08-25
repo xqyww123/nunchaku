@@ -402,6 +402,20 @@ let start_task p t =
     );
   ()
 
+(* the deadline has to bind in wall-clock time: what a backend limits
+   itself to is CPU time (cvc5 runs under [ulimit -t]), and the pool would
+   otherwise wait for it however long that takes.  There is no timed
+   [Condition.wait], so one thread sleeps until the deadline and wakes the
+   pool up; it outlives a pool that finishes early, harmlessly. *)
+let wake_at_deadline_ pool =
+  ignore
+    (Thread.create
+       (fun () ->
+          let delay = pool.deadline -. Unix.gettimeofday() in
+          if delay > 0. then Thread.delay delay;
+          with_ pool ~f:(fun () -> Condition.broadcast pool.cond))
+       ())
+
 (* main function for running threads *)
 let rec run_pool pool =
   Mutex.lock pool.lock;
@@ -415,12 +429,13 @@ let rec run_pool pool =
     | [], [], _ ->
       Utils.debug ~lock:true ~section 2 "all tasks done";
       Mutex.unlock pool.lock;
-      begin match pool.pool_state with
-        | Res_list ([], e :: _) ->
-          (* nobody answered at all: the exception is the only news *)
-          Res_fail e
-        | st -> st
-      end
+      pool.pool_state
+    | _, _, Res_list _ when Unix.gettimeofday() >= pool.deadline ->
+      (* out of time: keep whatever was collected, stop the rest *)
+      Utils.debug ~lock:true ~section 2 "deadline reached, stop active tasks...";
+      Mutex.unlock pool.lock;
+      List.iter kill_rtask_ pool.active;
+      pool.pool_state
     | task :: todo_tl, _, Res_list _ ->
       if List.length pool.active < pool.j
       then (
@@ -462,13 +477,14 @@ let run ~j ~deadline tasks =
     lock=Mutex.create();
     cond=Condition.create();
   } in
+  wake_at_deadline_ pool;
   run_pool pool
 
 (*$=
   (Res_one 5) ( \
     let mk i = Task.make \
       (fun ~deadline:_ () -> if i=5 then i, Shortcut else i, No_shortcut) in \
-    run ~j:3 ~deadline:5. CCList.(1 -- 10 |> map mk))
+    run ~j:3 ~deadline:(Unix.gettimeofday() +. 5.) CCList.(1 -- 10 |> map mk))
 *)
 
 (*$=
@@ -476,20 +492,21 @@ let run ~j ~deadline tasks =
     let mk i = Task.make \
       (fun ~deadline:_ () -> Thread.delay (float i *. 0.1); \
                  if i=5 then i, Shortcut else i, No_shortcut) in \
-    run ~j:3 ~deadline:5. CCList.(1 -- 10 |> map mk))
+    run ~j:3 ~deadline:(Unix.gettimeofday() +. 5.) CCList.(1 -- 10 |> map mk))
 *)
 
-(* a task that raises fails the run only if nobody else answered *)
+(* a task that raises is reported, not fatal: even when it is the only task,
+   the pool hands the exception back rather than deciding the run failed *)
 (*$=
-  (Res_fail Exit) ( \
+  (Res_list ([], [Exit])) ( \
     let mk i = Task.make (fun ~deadline:_ () -> if i=5 then raise Exit else i, No_shortcut) in \
-    run ~j:3 ~deadline:5. [mk 5])
+    run ~j:3 ~deadline:(Unix.gettimeofday() +. 5.) [mk 5])
 *)
 
 (*$T
   (match ( \
      let mk i = Task.make (fun ~deadline:_ () -> if i=5 then raise Exit else i, No_shortcut) in \
-     run ~j:3 ~deadline:5. CCList.(1 -- 10 |> map mk)) with \
+     run ~j:3 ~deadline:(Unix.gettimeofday() +. 5.) CCList.(1 -- 10 |> map mk)) with \
    | Res_list (l, [Exit]) -> List.sort Stdlib.compare l = CCList.(1--4) @ CCList.(6--10) \
    | _ -> false)
 *)
@@ -499,7 +516,7 @@ let run ~j ~deadline tasks =
   (Res_one 7) ( \
     let mk i = Task.make (fun ~deadline:_ () -> \
       if i=5 then raise Exit else if i=7 then i, Shortcut else i, No_shortcut) in \
-    run ~j:3 ~deadline:5. CCList.(1 -- 10 |> map mk))
+    run ~j:3 ~deadline:(Unix.gettimeofday() +. 5.) CCList.(1 -- 10 |> map mk))
 *)
 
 (* a [post] that withholds the shortcut must not end the race *)
@@ -507,12 +524,12 @@ let run ~j ~deadline tasks =
   (Res_list ([42], [])) ( \
     let t = Task.make (fun ~deadline:_ () -> 42, Shortcut) \
       |> Task.map_res ~f:(fun (x,_) -> x, No_shortcut) in \
-    run ~j:1 ~deadline:5. [t])
+    run ~j:1 ~deadline:(Unix.gettimeofday() +. 5.) [t])
 *)
 
 (*$=
   (Res_list (CCList.(1--10), [])) ( \
     let mk i = Task.make (fun ~deadline:_ () -> i, No_shortcut) in \
-    let res = run ~j:3 ~deadline:5. CCList.(1 -- 10 |> map mk) in \
+    let res = run ~j:3 ~deadline:(Unix.gettimeofday() +. 5.) CCList.(1 -- 10 |> map mk) in \
     match res with Res_list (l,f) -> Res_list (List.sort Stdlib.compare l, f) | x->x)
 *)

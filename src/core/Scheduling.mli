@@ -119,24 +119,31 @@ type 'a run_result =
       (** the results of the tasks that did not end the race, and the
           exceptions raised by the tasks that produced no result at all *)
   | Res_fail of exn
+      (** post-processing raised; see {!run} *)
 
 val run :
   j:int ->
   deadline:float ->
   'res Task.t list ->
   'res run_result
-(** [run ~j tasks] runs the given list of tasks in at most [j] simultaneous
-    threads, possibly exiting early if a task returns {!Return_shortcut}.
+(** [run ~j ~deadline tasks] runs the given list of tasks in at most [j]
+    simultaneous threads.
+
+    [deadline] is an absolute wall-clock instant, on {!Unix.gettimeofday}'s
+    scale, and it binds: tasks still running when it passes are killed, and
+    [run] returns with what the finished ones produced.
 
     For a task [t]:
     {ul
-      {- if [t] returns [Return x], then [x] will be in the list of results
-        iff every other process also returns [Return y] for some [y]}
-      {- if [t] returns [Return_shortcut x], then still running processes
-        are killed and [Return_shortcut x] is returned by the function}
+      {- if [t] returns [x, No_shortcut], then [x] joins the list of results}
+      {- if [t] returns [x, Shortcut], then the still running tasks are
+        killed and [Res_one x] is returned}
     }
 
-    If some task raises an exception, the other tasks keep running: one
-    backend failing must not discard what the others found.  The exception
-    is reported alongside their results in [Res_list], and becomes the
-    result [Res_fail] only if no task produced any result. *)
+    A task that raises does not stop the others: one backend failing must not
+    discard what the others found.  Its exception is reported in [Res_list]
+    beside their results, and what a run that produced nothing but exceptions
+    means is the caller's decision, not this module's.  The one exception
+    that is still fatal here is one raised by a task's [post] (see
+    {!Task.map_res}): that is the caller's own post-processing rather than
+    the task's doing, and it yields [Res_fail]. *)

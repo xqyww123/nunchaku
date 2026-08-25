@@ -257,3 +257,44 @@ who has never seen the upstream repository.  Base commit: d23a876.
   cvc5,smbc,paradox --timeout 5` on a refutable copy-free problem;
   before: `Error: Paradox: parsing model failed`, exit 1; after: `UNSAT`,
   exit 0, 3 runs out of 3.
+
+## 9. `--timeout` is a wall-clock deadline, not a hint
+
+- **Motivation**: nothing enforced `--timeout` in wall-clock time.  The
+  pool waited on a condition variable with no deadline of its own, and the
+  only hard limit anywhere was cvc5's `ulimit -t timeout+1.5`, which
+  counts **CPU** seconds -- so a run that is not answered costs more than
+  it was given: measured on a captured Isabelle `int` problem,
+  `--solvers cvc5` took 7.05 s at `--timeout 5` and 5.57 s at
+  `--timeout 1`.  The Isabelle frontend caps the call at `timeout + 1 s`
+  and kills it from outside, so those overruns reached the user as
+  "Time out" rather than as an answer, and the extra seconds were spent
+  before the kill.
+- **Fix**: `Scheduling.run` starts one thread that sleeps until the pool's
+  deadline and wakes the pool (there is no timed `Condition.wait`).  At
+  the deadline the pool stops its running tasks and returns what the
+  finished ones produced.  If nothing was produced at all, the result is
+  `UNKNOWN (TIMEOUT ...)` and exit 0 -- where the previous code would have
+  reported `no task succeeded` with exit 1, which the Isabelle frontend
+  files as `Unknown_Error`.  cvc5's `ulimit -t` stays as a CPU backstop;
+  the wall clock is now the binding limit.
+- **What a preempted backend loses**: a task killed at the deadline never
+  reports, so its own diagnostic goes with it.  `--solvers kodkod
+  --timeout 5` on a copy problem used to end with
+  `TIMEOUT {backend:kodkod, …, message="dimension 8"}` -- the only clue how
+  far kodkod got -- and now ends with `TIMEOUT {backend:scheduler, …}`.
+  There is no grace window: the deadline is the deadline.  Buying the
+  diagnostic back means letting a killed task report on its way out, which
+  is worth doing when someone misses it.
+- **Who decides that a run failed**: not the pool.  It reports the results
+  it collected and the exceptions it caught, and `process_res_` reads that
+  once: nothing but exceptions, one per task, is a broken installation and
+  exits 1; an exception beside a timeout is a `BACKEND_ERROR` line under the
+  `TIMEOUT` one, because a backend that died must not become invisible
+  behind the clock.
+- **Also**: the `Scheduling` qtests passed `~deadline:5.`, an absolute
+  time in 1970, which only worked because nothing read the deadline; they
+  now pass `Unix.gettimeofday () +. 5.`
+- **Repro**: captured Isabelle problem for `n1`, `--solvers cvc5`; before:
+  7.05 s at `--timeout 5`, 5.57 s at `--timeout 1`; after: 5.01 s and
+  1.01 s, same verdict.
