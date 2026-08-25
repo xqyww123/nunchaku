@@ -35,89 +35,343 @@ jobs:
       - run: opam exec -- dune build @install --profile=release
       - run: opam exec -- dune runtest --profile=release
 
+  # ---------------------------------------------------------------------------
+  # Release binaries.  Five platforms, two artifacts each (nunchaku and the
+  # smbc 0.5.3 bundles), ten release assets in total.  The naming contract and
+  # the reasoning behind it live in .github/scripts/release-attach.sh, which
+  # every leg calls, so there is exactly one definition of it.
+  #
+  #   conda subdir    Isabelle platform   runner            toolchain
+  #   linux-64        x86_64-linux        ubuntu-latest     musl-static
+  #   linux-aarch64   arm64-linux         ubuntu-24.04-arm  musl-static
+  #   osx-64          x86_64-darwin       macos-15-intel    plain 4.14.2
+  #   osx-arm64       arm64-darwin        macos-15          plain 4.14.2 + re-sign
+  #   win-64          x86_64-cygwin       windows-latest    Isabelle's Cygwin + opam
+  #
+  # (Isabelle platform identifiers as in the distribution's
+  # lib/scripts/isabelle-platform.  macos-15-intel, not macos-13: the macos-13
+  # label is retired and those legs queue forever without ever being scheduled.)
+  #
+  # WHY TWO JOBS rather than one five-way matrix.  The four unix legs share
+  # every step and differ only in matrix fields, so they are one matrix.  win-64
+  # is a different toolchain end to end -- Isabelle's bundled Cygwin brought up
+  # from PowerShell, its own opam, its own cache -- and it needs a 300-minute
+  # budget where the unix legs need 90.  Folding it in would force that budget
+  # on every leg, which destroys the only thing a timeout is for, and would show
+  # each leg a dozen skipped steps belonging to the other family.  Both jobs end
+  # at the same contract.
+  # ---------------------------------------------------------------------------
   release-binary:
-    name: static release binary (musl) + CLI smoke
+    name: "release ${{ matrix.target.isa_platform }} (nunchaku + smbc) + CLI smoke"
     needs: run   # never attach a release asset from a tree whose test matrix is red
-    timeout-minutes: 45
-    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    runs-on: ${{ matrix.target.runner }}
     permissions:
       contents: write   # for the tag-push GitHub release below
+    strategy:
+      # One platform's failure must not hide the others': with fail-fast a
+      # single red leg would leave the remaining four unmeasured, and the
+      # packaging side would then see a partial release with no way to tell
+      # "not built" from "built and broken".
+      fail-fast: false
+      matrix:
+        # An object-valued key, NOT `include:`.  `include` entries whose keys
+        # are absent from the base matrix are merged into every combination in
+        # turn, each overwriting the last, so a list of platforms collapses onto
+        # the last one (measured in isabelle-packaging-ci's release-rocksdict,
+        # where three legs all came out win-64).
+        target:
+          - isa_platform: x86_64-linux
+            runner: ubuntu-latest
+            musl: true
+            ocaml: ocaml-variants.4.14.2+options,ocaml-option-musl,ocaml-option-static
+            cvc5_asset: cvc5-Linux-x86_64-static
+            cvc5_sha256: dcdbfada0ce493ee98259c0816e0daafc561c223aadb3af298c2968e73ea39c6
+          - isa_platform: arm64-linux
+            runner: ubuntu-24.04-arm
+            musl: true
+            ocaml: ocaml-variants.4.14.2+options,ocaml-option-musl,ocaml-option-static
+            cvc5_asset: cvc5-Linux-arm64-static
+            cvc5_sha256: 2a4c108367f20b0c8990abd6b9535a5d62e08908d471d4671c00734e408f85bc
+          - isa_platform: x86_64-darwin
+            runner: macos-15-intel
+            musl: false
+            ocaml: "4.14.2"
+            cvc5_asset: cvc5-macOS-x86_64-static
+            cvc5_sha256: 5a7976affaf37dcf03ee44c3d0297c8e0ba08afd44ac832dab97400da726b852
+          - isa_platform: arm64-darwin
+            runner: macos-15
+            musl: false
+            ocaml: "4.14.2"
+            cvc5_asset: cvc5-macOS-arm64-static
+            cvc5_sha256: 3840aa53f6ee6fc357415dcfe291d7f5ffec6cfb1ccca6fef64120a0d2be4cb6
+    env:
+      ISA_PLATFORM: ${{ matrix.target.isa_platform }}
     steps:
       - uses: actions/checkout@v4
 
-      - run: sudo apt-get update && sudo apt-get install -y musl-tools
+      # musl is a linux-only story: the macOS legs have no equivalent and want
+      # none (see release-build-unix.sh).
+      - if: matrix.target.musl
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
 
       - uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: ocaml-variants.4.14.2+options,ocaml-option-musl,ocaml-option-static
+          ocaml-compiler: ${{ matrix.target.ocaml }}
           # no dune cache here: a release binary must never be able to come
           # out of a cache shared with the glibc build-matrix jobs
           dune-cache: false
 
+      # -t installs the test dependencies too -- release-build-unix.sh runs
+      # `dune runtest` on this platform's own toolchain.
       - run: opam install -t . --deps-only
 
-      - name: Build (version from VERSION, static, tested, stripped)
-        run: |
-          # version comes from the VERSION file, not from git: dune subst
-          # depends on git describe, which sees no annotated tag in a CI
-          # checkout (lightweight tags only) and stamps a commit hash.
-          # %{version:nunchaku} reads the opam file's version field
-          # (measured: it wins over a dune-project (version) stanza).
-          sed -i "s/^version: .*/version: \"$(cat VERSION)\"/" nunchaku.opam
-          # ocaml-option-static alone leaves the final link dynamic (measured:
-          # a musl PIE with interpreter /lib/ld-musl-x86_64.so.1); OCAMLPARAM
-          # injects -static into ocamlopt's C-linker invocation.
-          opam exec -- env OCAMLPARAM="_,ccopt=-static" dune build @install --profile=release
-          opam exec -- env OCAMLPARAM="_,ccopt=-static" dune runtest --profile=release
-          cp _build/default/src/main/nunchaku.exe nunchaku-bin
-          strip nunchaku-bin
+      - name: Build nunchaku + smbc (version from VERSION, tested, stripped)
+        run: opam exec -- .github/scripts/release-build-unix.sh
+
+      - name: Link-footprint evidence
+        run: .github/scripts/release-verify-link.sh "$ISA_PLATFORM" nunchaku-bin smbc-bin
 
       - name: Fetch cvc5 (pinned release)
         run: |
-          curl -sSL -o cvc5.zip https://github.com/cvc5/cvc5/releases/download/cvc5-1.3.4/cvc5-Linux-x86_64-static.zip
-          echo "dcdbfada0ce493ee98259c0816e0daafc561c223aadb3af298c2968e73ea39c6  cvc5.zip" | sha256sum -c
-          unzip -q cvc5.zip
+          .github/scripts/release-fetch-cvc5.sh \
+            "${{ matrix.target.cvc5_asset }}" "${{ matrix.target.cvc5_sha256 }}"
 
-      - name: CLI smoke
-        run: |
-          set -o pipefail
-          # really static?  INTERP is an ELF program-header name -- locale-
-          # and wording-independent, unlike ldd's message
-          file ./nunchaku-bin
-          ! readelf -l ./nunchaku-bin | grep -q INTERP
-          # the binary must self-report the release version (the single
-          # source: the VERSION file)
-          ./nunchaku-bin --version
-          ./nunchaku-bin --version | grep -q " $(cat VERSION) "
-          # the exact flag table the Isabelle frontend sends must parse, and the
-          # answer must keep the SAT / {backend:...} output shape
-          export NUNCHAKU_CVC5=$PWD/cvc5-Linux-x86_64-static/bin/cvc5
-          ./nunchaku-bin --skolems-in-model --no-color --no-specialize \
-            --solvers "cvc5,kodkod,paradox,smbc" --timeout 30 \
-            --kodkod-min-bound 4 --kodkod-max-bound 8 --kodkod-bound-increment 4 \
-            regress/gold.nun | tee smoke.out
-          grep -q '^SAT' smoke.out
-          grep -q '{backend:' smoke.out
+      - name: CLI smoke (the assembled component, not the bare binary)
+        env:
+          SRC_ROOT: ${{ github.workspace }}
+          NUNCHAKU_SRC: ${{ github.workspace }}/nunchaku-bin
+          SMBC_SRC: ${{ github.workspace }}/smbc-bin
+          CVC5_SRC: ${{ github.workspace }}/cvc5-bin
+        run: .github/scripts/release-smoke.sh
 
-      - name: Upload release binary
+      - name: Upload release binaries
         uses: actions/upload-artifact@v4
         with:
-          name: nunchaku-bin-x86_64-linux
-          path: nunchaku-bin
+          name: nunchaku-${{ matrix.target.isa_platform }}
+          path: |
+            nunchaku-bin
+            smbc-bin
           retention-days: 90
 
-      - name: Attach binary to the GitHub release (tag pushes only)
+      - name: Attach binaries to the GitHub release (tag pushes only)
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/release-attach.sh
+
+  release-binary-win:
+    name: "release x86_64-cygwin (nunchaku + smbc) + CLI smoke"
+    needs: run
+    # 300 minutes, not 90: this leg installs a full Isabelle distribution,
+    # initialises its Cygwin, builds an OCaml switch from scratch on a cold
+    # cache, and then builds nunchaku, its test suite and smbc under it.
+    timeout-minutes: 300
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    env:
+      ISA_PLATFORM: x86_64-cygwin
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Disk space and layout decision
+        shell: pwsh
         run: |
-          # the tag must agree with the VERSION single source
-          test "refs/tags/v$(cat VERSION)" = "${{ github.ref }}" || {
-            echo "tag ${{ github.ref }} does not match VERSION $(cat VERSION)"; exit 1; }
-          cp nunchaku-bin nunchaku-bin-x86_64-linux
-          sha256sum nunchaku-bin-x86_64-linux > nunchaku-bin-x86_64-linux.sha256
-          gh release create "${{ github.ref_name }}" --notes "See PATCHES.md for the patch set." || true
-          gh release upload "${{ github.ref_name }}" nunchaku-bin-x86_64-linux nunchaku-bin-x86_64-linux.sha256 --clobber
+          Get-PSDrive -PSProvider FileSystem | Format-Table Name,@{n='Used(GB)';e={[math]::Round($_.Used/1GB,1)}},@{n='Free(GB)';e={[math]::Round($_.Free/1GB,1)}}
+          $cFree = (Get-PSDrive C).Free/1GB
+          $root = if ($cFree -gt 25) { 'C:\isa' } else { "$env:GITHUB_WORKSPACE\..\isa" }
+          $root = [System.IO.Path]::GetFullPath($root)
+          echo "ISA_ROOT=$root" >> $env:GITHUB_ENV
+          echo "ISA_HOME_W=$root\Isabelle2025-2" >> $env:GITHUB_ENV
+          echo "BASH_EXE=$root\Isabelle2025-2\contrib\cygwin\bin\bash.exe" >> $env:GITHUB_ENV
+          echo "chosen root: $root (C free: $([math]::Round($cFree,1)) GB)"
+
+      - name: Restore cached Isabelle installer
+        id: isaexe
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}\isadl\Isabelle2025-2.exe
+          key: isabelle2025-2-exe-v1
+
+      - name: Download Isabelle2025-2 (Windows)
+        if: steps.isaexe.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\isadl" | Out-Null
+          # isabelle.in.tum.de redirects to plain-HTTP dist.isabelle.cit.tum.de:80,
+          # which the runner cannot reach (measured) -- use the HTTPS target directly.
+          curl.exe -sSL --retry 3 -o "$env:RUNNER_TEMP\isadl\Isabelle2025-2.exe" 'https://dist.isabelle.cit.tum.de/dist/Isabelle2025-2.exe?token=Isabelle'
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Get-Item "$env:RUNNER_TEMP\isadl\Isabelle2025-2.exe" | Format-List Length
+
+      - name: Save Isabelle installer to cache
+        if: always() && steps.isaexe.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}\isadl\Isabelle2025-2.exe
+          key: isabelle2025-2-exe-v1
+
+      - name: Extract Isabelle (7z)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force $env:ISA_ROOT | Out-Null
+          7z x -y "-o$env:ISA_ROOT" "$env:RUNNER_TEMP\isadl\Isabelle2025-2.exe" | Select-Object -Last 5
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Get-ChildItem $env:ISA_HOME_W | Select-Object Name | Format-Table
+
+      - name: Cygwin init (symlinks + rebaseall + postinstall)
+        shell: pwsh
+        run: |
+          # replica of Environment.cygwin_init; the official "-init" launcher
+          # detaches (launch4j GUI wrapper, exit 259) so it cannot be awaited.
+          python "$env:GITHUB_WORKSPACE\.github\scripts\w2-cygwin-init.py"
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          # sanity: bash, symlinks, basic tools
+          & $env:BASH_EXE --login -c 'uname -a; ls -l /usr/bin/awk; echo CYGWIN_OK'
+          exit $LASTEXITCODE
+
+      - name: POSIX path bookkeeping
+        shell: pwsh
+        run: |
+          $ws = (& $env:BASH_EXE --login -c "cygpath -u '$env:GITHUB_WORKSPACE'" | Select-Object -Last 1)
+          echo "WS_POSIX=$ws" >> $env:GITHUB_ENV
+          echo "workspace posix path: $ws"
+
+      - name: Install extra Cygwin packages (opam + build tools)
+        shell: pwsh
+        run: |
+          $mirror = (Get-Content "$env:ISA_HOME_W\contrib\cygwin\isabelle\cygwin_mirror" -Raw).Trim()
+          New-Item -ItemType Directory -Force C:\temp\cygpkg | Out-Null
+          # no pwsh function here: a function's pipeline output would be
+          # captured into its return value (measured)
+          $ok = $false
+          foreach ($site in @($mirror, 'https://mirrors.kernel.org/sourceware/cygwin/')) {
+            Write-Host "===== cygwin setup from $site ====="
+            # `git` is in the list for w2-smbc.sh, which takes smbc from its
+            # upstream git tag -- the same tag the four unix legs pin -- so all
+            # five legs ship the same solver from one source of truth.
+            $pkgargs = @('--site', $site, '--no-verify',
+                         '--local-package-dir', 'C:\temp\cygpkg',
+                         '--root', "$env:ISA_HOME_W\contrib\cygwin",
+                         '--packages', 'opam,gcc-core,make,m4,patch,unzip,diffutils,flexdll,bzip2,rsync,git',
+                         '--no-shortcuts', '--no-startmenu', '--no-desktop', '--quiet-mode')
+            $p = Start-Process -FilePath "$env:ISA_HOME_W\contrib\cygwin\isabelle\cygwin.exe" -ArgumentList $pkgargs -PassThru
+            if (-not $p.WaitForExit(1500000)) { $p.Kill(); Write-Error 'cygwin setup timed out'; exit 1 }
+            Write-Host "setup exit code: $($p.ExitCode)"
+            # setup is a GUI-subsystem exe: its console output is invisible,
+            # the real diagnostics are in its logs
+            foreach ($log in 'setup.log','setup.log.full') {
+              $f = "$env:ISA_HOME_W\contrib\cygwin\var\log\$log"
+              if (Test-Path $f) { Write-Host "===== $log (tail) ====="; Get-Content $f -Tail 80 | Out-Host }
+            }
+            if (($p.ExitCode -eq 0) -and (Test-Path "$env:ISA_HOME_W\contrib\cygwin\bin\opam.exe")) { $ok = $true; break }
+            Write-Host "setup from $site failed or opam still missing"
+          }
+          if (-not $ok) { Write-Error 'cygwin package installation failed on all mirrors'; exit 1 }
+          # sanity must name /usr/bin paths: the runner's Windows PATH (mingw
+          # gcc, Strawberry patch, Git unzip, Git git) leaks into cygwin shells
+          # and can satisfy a bare "command -v" spuriously (measured)
+          & $env:BASH_EXE --login -c 'set -e; for t in opam gcc make m4 patch unzip git strip; do test -x /usr/bin/$t || { echo "MISSING /usr/bin/$t"; exit 1; }; done; /usr/bin/opam --version; /usr/bin/gcc --version | head -1; /usr/bin/git --version'
+          exit $LASTEXITCODE
+
+      - name: Restore opam root cache
+        id: opamroot
+        uses: actions/cache/restore@v4
+        with:
+          path: ~\.opam
+          key: w2-opam-v4-${{ hashFiles('nunchaku.opam') }}
+          restore-keys: |
+            w2-opam-
+
+      - name: ocaml_setup_base (opam init + OCaml 4.14.1 switch)
+        shell: pwsh
+        run: |
+          & $env:BASH_EXE --login "$env:WS_POSIX/.github/scripts/w2-ocaml-setup.sh"
+          exit $LASTEXITCODE
+
+      - name: Install nunchaku opam dependencies
+        shell: pwsh
+        run: |
+          & $env:BASH_EXE --login "$env:WS_POSIX/.github/scripts/w2-deps.sh"
+          exit $LASTEXITCODE
+
+      - name: Build nunchaku (dune, release)
+        shell: pwsh
+        run: |
+          & $env:BASH_EXE --login "$env:WS_POSIX/.github/scripts/w2-build.sh"
+          exit $LASTEXITCODE
+
+      # The gate, on this platform's toolchain.  Deliberately NOT
+      # continue-on-error, unlike the platform probe this leg grew out of: the
+      # three hermetic suites 0.5.3 added fork, setsid, put children in their
+      # own process group and kill(-pid) them, Cygwin only emulates all of that,
+      # and shipping a win-64 binary whose test suite was never required to pass
+      # would be certifying nothing.  MUST precede the smbc step below.
+      - name: Full test suite (dune runtest)
+        shell: pwsh
+        run: |
+          & $env:BASH_EXE --login "$env:WS_POSIX/.github/scripts/w2-runtest.sh"
+          exit $LASTEXITCODE
+
+      - name: Build smbc 0.6.1 (from the upstream git tag)
+        shell: pwsh
+        run: |
+          & $env:BASH_EXE --login "$env:WS_POSIX/.github/scripts/w2-smbc.sh"
+          exit $LASTEXITCODE
+
+      - name: Save opam root cache
+        if: always() && steps.opamroot.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~\.opam
+          key: w2-opam-v4-${{ hashFiles('nunchaku.opam') }}
+
+      - name: Fetch cvc5 (pinned release, Win64 static)
+        shell: pwsh
+        run: |
+          curl.exe -sSL --retry 3 -o cvc5.zip https://github.com/cvc5/cvc5/releases/download/cvc5-1.3.4/cvc5-Win64-x86_64-static.zip
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          $h = (Get-FileHash cvc5.zip -Algorithm SHA256).Hash.ToLower()
+          if ($h -ne '279fe7e95810cfb62433fcfc2932f35325a665f32d3697ff33f75e31d5c6a179') {
+            Write-Error "cvc5.zip sha256 mismatch: $h"; exit 1 }
+          Expand-Archive -Force cvc5.zip -DestinationPath cvc5dist
+          New-Item -ItemType Directory -Force solvers | Out-Null
+          Copy-Item cvc5dist\cvc5-Win64-x86_64-static\bin\cvc5.exe solvers\cvc5.exe
+          # the pinned cvc5 version, asserted rather than assumed -- cvc5 is a
+          # native Windows binary, so it runs here without Cygwin
+          $v = (& .\solvers\cvc5.exe --version | Select-Object -First 1)
+          Write-Host "cvc5: $v"
+          if ($v -notmatch 'cvc5 1\.3\.4') { Write-Error "expected cvc5 1.3.4, got: $v"; exit 1 }
+
+      - name: CLI smoke (the assembled component, under Isabelle's Cygwin)
+        shell: pwsh
+        run: |
+          & $env:BASH_EXE --login "$env:WS_POSIX/.github/scripts/w2-smoke.sh"
+          exit $LASTEXITCODE
+
+      - name: Stage the binaries under the names every leg uses
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp artifacts/nunchaku.exe nunchaku-bin
+          cp artifacts/smbc.exe smbc-bin
+
+      - name: Upload release binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: nunchaku-x86_64-cygwin
+          path: |
+            nunchaku-bin
+            smbc-bin
+          retention-days: 90
+
+      - name: Attach binaries to the GitHub release (tag pushes only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/release-attach.sh
 
   benchmark:
     name: benchmark

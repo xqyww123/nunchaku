@@ -106,7 +106,7 @@ The rules are the same for all five:
 consulted, whether it was set, and which path it settled on.
 
 NOTE: the binary published with a release is *not* the Isabelle component.  The
-component is that binary plus the wrapper in `component/x86_64-linux/nunchaku`
+component is that binary plus the wrapper in `component/nunchaku`
 plus the pinned solvers it exports, and it is the combination `regress/` and the
 release gate certify.  Run the bare binary and the solvers come from your
 `PATH`, whatever they happen to be.

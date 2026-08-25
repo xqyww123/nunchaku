@@ -57,8 +57,11 @@ certification the artifact above is fine.
 ## 2. Assemble the component under test
 
 Drop into a copy of `../component/` (or point `$NUNCHAKU_COMPONENT` at an
-assembled one):
+assembled one).  `../component/` holds the platform-independent skeleton, so
+assembling a linux component means creating the `x86_64-linux/` directory and
+filling it (`../component/README.md` describes the layout in full):
 
+- `x86_64-linux/nunchaku` — the wrapper, copied from `../component/nunchaku`;
 - `x86_64-linux/nunchaku-bin` — the freshly built `nunchaku.exe`;
 - `x86_64-linux/solvers/cvc5` — a static cvc5 **≥ 1.3.1** (the backend
   sends `get-model-domain-elements`, which older cvc5 answers with an
@@ -69,8 +72,12 @@ assembled one):
   dependencies cap OCaml below 4.08, and that era has no arm64 macOS
   backend at all.  0.6.1 needs `containers 2.8.1` from the opam archive
   repository (it uses the `containers.sexp` sublibrary that 3.x removed);
-- substitute `@NUNCHAKU_VERSION@` in `etc/settings` with the content of
-  the repository's `VERSION` file.
+- substitute both placeholders in `etc/settings`: `@NUNCHAKU_VERSION@` with
+  the content of the repository's `VERSION` file, and `@NUNCHAKU_PLATFORM@`
+  with `x86_64-linux`.  `regress/lib_bootstrap.sh` refuses to run unless the
+  resulting `NUNCHAKU_HOME` and `NUNCHAKU_VERSION` are the ones under test,
+  so a forgotten substitution stops the gate rather than silently certifying
+  the distribution's 2017 binary.
 
 Both solvers are pinned by the wrapper, which is what makes the certified
 combination the one that runs: Isabelle puts `$SMBC_HOME` on the PATH, so
