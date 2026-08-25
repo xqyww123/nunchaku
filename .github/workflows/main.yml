@@ -43,9 +43,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # The default for every job: only release-assets widens it, and its own
-# `permissions:` block says why.  Without this the repository default applies,
-# which on a public repository is read but on a private one can be write --
-# `run` and `benchmark` have no business holding either.
+# `permissions:` block says why.  Without this the repository's own default
+# applies -- a per-repository setting, not a property of being public or
+# private -- and `run` and `benchmark` have no business holding write.
 permissions:
   contents: read
 
@@ -611,9 +611,12 @@ jobs:
           # here rather than a four-fifths release.
           pattern: nunchaku-*
           path: dl
-          # Lets a re-run of this job alone reach the artifacts the build legs
-          # uploaded in the previous attempt; without it the download 404s and
-          # the recovery path the release procedure prescribes does not exist.
+          # Passed so a re-run of this job alone can reach artifacts uploaded
+          # by an earlier attempt.  Upstream documents the token for reading
+          # another RUN's artifacts; whether an earlier attempt of the same run
+          # needs it has changed over time (download-artifact#486 was closed in
+          # July 2026), so this is belt and braces rather than a standing
+          # platform fact -- it costs a read-only scope this job already has.
           github-token: ${{ github.token }}
 
       - name: Assemble and assert the twenty-five release assets
