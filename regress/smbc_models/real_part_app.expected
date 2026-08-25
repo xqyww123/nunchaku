@@ -1,0 +1,10 @@
+SAT: {
+  type a := {$a_0, $a_1}.
+  val b := $a_0.
+  val a2 := $a_1.
+  val sup := (fun (v1:a -> prop) (v2:a -> prop) (v3:a). false).
+  val bot := (fun (v4:a). ?__1).
+}
+{backend:smbc, time:Ns}
+--- stderr ---
+rc=0

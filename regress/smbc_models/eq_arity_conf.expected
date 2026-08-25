@@ -1,0 +1,10 @@
+SAT: {
+  type a_ := {$a__0, $a__1}.
+  val c_ := (?__unparsable a_ -> a_) $a__0.
+  val q_ := ((?__unparsable a_ -> a_) $a__0 $a__0 = $a__0).
+}
+{backend:smbc, time:Ns}
+--- stderr ---
+[Warning error when parsing model:
+  unknown `?f` recovered at two types: `a_ -> a_` and `a_ -> a_ -> a_`]
+rc=0

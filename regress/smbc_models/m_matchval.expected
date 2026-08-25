@@ -1,0 +1,11 @@
+SAT: {
+  type a_ := {$a__0, $a__1}.
+  val xs_ := Nil_.
+  val ys_ := Cons_ $a__0 Nil_.
+  val g_ :=
+    (fun (v1:list_).
+       match v1 with | Cons_ v2 v3 -> $a__1| Nil_  -> $a__0 end).
+}
+{backend:smbc, time:Ns}
+--- stderr ---
+rc=0

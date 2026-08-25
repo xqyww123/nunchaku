@@ -1,0 +1,34 @@
+; Hermetic guard suite for the smbc model parser.
+;
+; Every case replays a canned smbc answer through the fake solver, so the suite
+; pins what nunchaku makes of a model it cannot fully read -- something no run
+; against a real smbc can exercise on demand, because the interesting answers
+; are the ones smbc emits rarely or not at all.  What each case is for is
+; spelled out case by case in README.md; the manifest both that file and these
+; rules are written against is cases.tsv.
+;
+; The four expectation words, and what a golden must therefore show:
+;   recovered  the unknown gets a type and prints as `?__<n>`
+;   opaque     no type is determined, and the output keeps `?__ ?name`
+;   conflict   one identity at two types: exactly one warning, and every
+;              occurrence printed as `?__unparsable <ty>`
+;   contained  the entry is lost and the rest of the model is delivered, rc=0
+;
+; The rules are generated: they are all the same shape and cases.tsv is the
+; single table, so gen_dune.ml reads it and dune.inc is promoted from that.
+(include dune.inc)
+
+(rule
+ (targets dune.inc.gen)
+ (deps
+  (:gen gen_dune.ml)
+  cases.tsv)
+ (action
+  (with-stdout-to
+   %{targets}
+   (run ocaml %{gen}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff dune.inc dune.inc.gen)))

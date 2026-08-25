@@ -1,0 +1,156 @@
+SAT: {
+  type a_ := {$a__0, $a__1}.
+  val xs_ := Nil_.
+  val ys_ :=
+    match ?__1
+            match ?__2
+                    match ?__3
+                            match ?__4
+                                    match ?__5
+                                            match ?__6
+                                                    match ?__7
+                                                            match ?__8
+                                                                    match 
+                                                                    ?__9
+                                                                    match 
+                                                                    ?__10
+                                                                    match 
+                                                                    ?__11
+                                                                    match 
+                                                                    ?__12
+                                                                    match 
+                                                                    ?__13
+                                                                    match 
+                                                                    ?__14
+                                                                    match 
+                                                                    ?__15
+                                                                    match 
+                                                                    ?__16
+                                                                    match 
+                                                                    ?__17
+                                                                    match 
+                                                                    ?__18
+                                                                    match 
+                                                                    ?__19
+                                                                    match 
+                                                                    ?__20
+                                                                    match 
+                                                                    ?__21
+                                                                    match 
+                                                                    (?__ ?f0)
+                                                                    (?__ ?l0) with
+                                                                    | Cons_ v1 
+                                                                    v2 ->
+                                                                    Nil_
+                                                                    | Nil_  ->
+                                                                    Nil_
+                                                                    end with
+                                                                    | Cons_ v3 
+                                                                    v4 ->
+                                                                    Nil_
+                                                                    | Nil_  ->
+                                                                    Nil_
+                                                                    end with
+                                                                    | Cons_ v5 
+                                                                    v6 ->
+                                                                    Nil_
+                                                                    | Nil_  ->
+                                                                    Nil_
+                                                                    end with
+                                                                    | Cons_ v7 
+                                                                    v8 ->
+                                                                    Nil_
+                                                                    | Nil_  ->
+                                                                    Nil_
+                                                                    end with
+                                                                    | Cons_ v9 
+                                                                    v10 ->
+                                                                    Nil_
+                                                                    | Nil_  ->
+                                                                    Nil_
+                                                                    end with
+                                                                    | Cons_ v11 
+                                                                    v12 ->
+                                                                    Nil_
+                                                                    | Nil_  ->
+                                                                    Nil_
+                                                                    end with
+                                                                    | Cons_ v13 
+                                                                    v14 ->
+                                                                    Nil_
+                                                                    | Nil_  ->
+                                                                    Nil_
+                                                                    end with
+                                                                    | Cons_ v15 
+                                                                    v16 ->
+                                                                    Nil_
+                                                                    | Nil_  ->
+                                                                    Nil_
+                                                                    end with
+                                                                    | Cons_ v17 
+                                                                    v18 ->
+                                                                    Nil_
+                                                                    | Nil_  ->
+                                                                    Nil_
+                                                                    end with
+                                                                    | Cons_ v19 
+                                                                    v20 ->
+                                                                    Nil_
+                                                                    | Nil_  ->
+                                                                    Nil_
+                                                                    end with
+                                                                    | Cons_ v21 
+                                                                    v22 ->
+                                                                    Nil_
+                                                                    | Nil_  ->
+                                                                    Nil_
+                                                                    end with
+                                                                    | Cons_ v23 
+                                                                    v24 ->
+                                                                    Nil_
+                                                                    | Nil_  ->
+                                                                    Nil_
+                                                                    end with
+                                                                    | Cons_ v25 
+                                                                    v26 ->
+                                                                    Nil_
+                                                                    | Nil_  ->
+                                                                    Nil_
+                                                                    end with
+                                                                    | Cons_ v27 
+                                                                    v28 ->
+                                                                    Nil_
+                                                                    | Nil_  ->
+                                                                    Nil_
+                                                                    end with
+                                                              | Cons_ v29 
+                                                                  v30 ->
+                                                                Nil_
+                                                              | Nil_  -> Nil_
+                                                            end with
+                                                      | Cons_ v31 v32 ->
+                                                        Nil_
+                                                      | Nil_  -> Nil_
+                                                    end with
+                                              | Cons_ v33 v34 -> Nil_
+                                              | Nil_  -> Nil_
+                                            end with
+                                      | Cons_ v35 v36 -> Nil_
+                                      | Nil_  -> Nil_
+                                    end with
+                              | Cons_ v37 v38 -> Nil_
+                              | Nil_  -> Nil_
+                            end with
+                      | Cons_ v39 v40 -> Nil_
+                      | Nil_  -> Nil_
+                    end with
+              | Cons_ v41 v42 -> Nil_
+              | Nil_  -> Nil_
+            end with
+      | Cons_ v43 v44 -> Nil_
+      | Nil_  -> Nil_
+    end.
+}
+{backend:smbc, time:Ns}
+--- stderr ---
+rc=0

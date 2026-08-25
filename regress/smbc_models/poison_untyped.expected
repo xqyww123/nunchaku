@@ -1,0 +1,12 @@
+SAT: {
+  type a_ := {$a__0, $a__1}.
+  type b_ := {$b__0, $b__1}.
+  val ys_ := $b__0.
+  val xs_ := (?__unparsable a_).
+  val f_ := (fun (v1:a_). (?__unparsable b_)).
+}
+{backend:smbc, time:Ns}
+--- stderr ---
+[Warning error when parsing model:
+  unknown `?w2` recovered at two types: `a_` and `b_`]
+rc=0

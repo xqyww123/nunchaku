@@ -1,0 +1,7 @@
+UNKNOWN
+(BACKEND_ERROR {backend:smbc, time:Ns} could not read smbc's output: could not parse result: expected a test <v1 = term>,
+  but got `(?__unparsable a_) = (?__unparsable b_)`)
+--- stderr ---
+[Warning error when parsing model:
+  unknown `?w2` recovered at two types: `b_` and `a_`]
+rc=0

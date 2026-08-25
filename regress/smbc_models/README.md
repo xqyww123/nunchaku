@@ -1,12 +1,17 @@
 # Case corpus for the smbc model parser
 
-This directory holds *inputs only*: the problems, the canned smbc answers,
-and the generator for the deep ones.  There are deliberately no dune rules
-and no expected-output files yet.  The shared driver
-(`regress/support/run_case`) is being written on another line, and the
-golden expectations are generated once every code change of this release
-has landed — the release moves `?__<n>` identities and warning texts, so
-generating them earlier only means regenerating them later.
+This directory is a hermetic golden-file suite under `dune runtest`.  Each
+case replays a canned smbc answer through the fake solver
+(`regress/support/fake_solver`), runs nunchaku on a problem under a
+wall-clock deadline (`regress/support/run_case`), and diffs the normalised
+report against a checked-in `<case>.expected`.  No real smbc is involved,
+so the answers that matter here — the ones smbc emits rarely or never —
+are exercised on every platform leg and on a developer's machine before
+pushing.
+
+```sh
+dune build @regress/smbc_models/runtest
+```
 
 ## Layout
 
@@ -15,10 +20,30 @@ generating them earlier only means regenerating them later.
 | `problems/*.nun` | the problems nunchaku is asked to solve |
 | `models/*.txt` | canned smbc answers, fed to nunchaku as smbc's stdout |
 | `gen_deep.py` | generator for the deeply nested models |
-| `cases.tsv` | the manifest: case → model, problem, deadline, expectation |
+| `cases.tsv` | the case table: case → model, problem, deadline, expectation |
+| `gen_dune.ml` | turns each row of `cases.tsv` into its two rules |
+| `dune.inc` | the generated rules, promoted and kept honest by a runtest diff |
+| `<case>.expected` | the golden report for one case |
 
-A case is run by pointing `NUNCHAKU_SMBC` at a stub that ignores its stdin
-and prints the model file, then running nunchaku on the problem:
+`cases.tsv` is the single table.  Adding a case is a row there plus its
+model file, then `dune build @regress/smbc_models/runtest` followed by
+`dune promote`, run twice over: the first pass refreshes `dune.inc`, the
+second records the new golden.  Refreshing a golden after a deliberate
+output change is the same two commands once over, and the diff must then
+be read against the case's expectation word below before it is committed.
+
+The `deadline` column is a wall-clock ceiling on the whole run, or `-` for
+the default of 20 seconds.  The deeply nested cases are the ones that carry
+a real number: decoding them used to cost time exponential in the depth,
+spent after smbc had already answered SAT and therefore outside nunchaku's
+own `--timeout`, so the ceiling is the only thing that can see that
+regression.  Over the ceiling, `run_case` kills the process group and the
+report ends in `rc=timeout`, which names the failure as a timing failure
+in the golden diff.
+
+To run one case by hand — for debugging, or to see what a change did before
+promoting it — point `NUNCHAKU_SMBC` at a stub that ignores its stdin and
+prints the model file:
 
 ```sh
 cat > stub.sh <<'EOF'
@@ -30,6 +55,9 @@ chmod +x stub.sh
 STUB_MODEL=models/m_cross.txt NUNCHAKU_SMBC=./stub.sh \
   nunchaku --solvers smbc --timeout 60 problems/two.nun
 ```
+
+Note that this prints the raw output; the goldens hold the *normalised*
+report, whose contract is the next section.
 
 ## The `?__<n>` and `v_N/M` contract
 
@@ -60,7 +88,18 @@ learned the hard way:
 
 ## The cases, and what each is for
 
-"Expectation" below is the word used in `cases.tsv`.
+"Expectation" below is the word used in `cases.tsv`.  It is what a reader
+checks a refreshed golden against, so here is what each word asks of one:
+*recovered*, the hole prints as `?__<n>` and no `?__ ?name` appears;
+*opaque*, the output still carries `?__ ?name` and the run ends `rc=0`;
+*conflict*, every occurrence of the class prints as `?__unparsable <ty>`
+and stderr carries exactly one warning; *contained*, the entry that could
+not be read is lost, the rest of the model is delivered and the run ends
+`rc=0`.  Three cases are filed under the word that names their family but
+qualify it, each for a reason spelled out where it is listed: `m_matchval`
+(*recovered*) holds no unknown at all, and `ite_lambda_mismatch` and
+`real_multi` (*contained*) lose the whole model rather than one entry,
+because what fails in them runs after the entries are converted.
 
 ### recovered — the unknown gets a type and prints as `?__<n>`
 
@@ -88,11 +127,15 @@ learned the hard way:
   each used to cost time exponential in the depth, spent *after* smbc had
   already answered SAT and therefore outside every deadline: 32.6 s at
   `eqn` depth 24, 56.7 s at `dist` depth 28, over 60 s for a linear chain
-  of 250 applications. They now finish in hundredths of a second, and the
-  deadline column in `cases.tsv` is what pins that. `m_dist_28` needs no
-  unknown at all — it is pure decoding cost. (`m_match_hp_22` is the fourth
-  deep family; it is listed under "opaque" below, because its innermost
-  node is an applied hole with an untyped argument.)
+  of 250 applications. They now finish in hundredths of a second — two
+  tenths for the 4000-deep chain, most of it printing — against the
+  one-second ceiling in `cases.tsv`, which is what pins that. `m_dist_28`
+  carries one unknown per level (`?p0` … `?p27`) and every one of them is
+  recovered from `distinct`'s argument type, so what its ceiling measures
+  is the decoding of the nesting itself and not the cost of leaving a hole
+  open. (`m_match_hp_22` is the fourth deep family; it is listed under
+  "opaque" below, because its innermost node is an applied hole with an
+  untyped argument.)
 - **real_part_app** — captured verbatim from real smbc 0.6.1 on
   `problems/part_app.nun`. Contains a genuine unknown (`?prop_9`) inside a
   lambda body, recovered as `?__<n>`. The corpus needs at least one answer

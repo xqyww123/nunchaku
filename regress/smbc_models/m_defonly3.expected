@@ -1,0 +1,11 @@
+SAT: {
+  type a_ := {$a__0, $a__1}.
+  val xs_ := (?__unparsable list_).
+  val ys_ := Cons_ $a__0 ?__1.
+}
+{backend:smbc, time:Ns}
+--- stderr ---
+[Warning error when parsing model:
+  cannot read the value of `xs_`: could not parse result: cannot find the datatype matched on in `(match ?l1 (case default $a__0))`:
+  the scrutinee has no type and no branch names a known constructor]
+rc=0

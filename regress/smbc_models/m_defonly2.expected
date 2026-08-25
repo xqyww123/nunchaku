@@ -1,0 +1,8 @@
+SAT: {
+  type a_ := {$a__0, $a__1}.
+  val ys_ := Cons_ $a__0 ?__1.
+  val xs_ := Cons_ $a__0 ?__1.
+}
+{backend:smbc, time:Ns}
+--- stderr ---
+rc=0

@@ -1,0 +1,9 @@
+SAT: {
+  type a_ := {$a__0, $a__1}.
+  val c_ := (?__unparsable a_).
+}
+{backend:smbc, time:Ns}
+--- stderr ---
+[Warning error when parsing model:
+  cannot read the value of `c_`: could not parse result: cannot read the cast `(as ?u a_)`]
+rc=0

@@ -1,0 +1,14 @@
+SAT: {
+  type a_ := {$a__0, $a__1}.
+  val ys_ := Cons_ (if ?__1 = $a__0 then $a__0 else $a__1) ?__2.
+  val xs_ :=
+    Cons_
+      (if $a__1 = ?__3
+       then if ~ ?__4 = $a__0 then ?__1 else $a__1
+       else
+         match ?__2 with | Cons_ v1 v2 -> v1| Nil_  -> $a__0 end) 
+      ?__2.
+}
+{backend:smbc, time:Ns}
+--- stderr ---
+rc=0

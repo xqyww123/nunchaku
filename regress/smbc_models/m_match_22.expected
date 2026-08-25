@@ -1,0 +1,12 @@
+SAT: {
+  type a_ := {$a__0, $a__1}.
+  val zz_ := (?__unparsable a_).
+}
+{backend:smbc, time:Ns}
+--- stderr ---
+[Warning error when parsing model:
+  cannot read the value of `zz_`: could not parse result: cannot find the datatype matched on in `(match (?f0 ?l0)
+                                          (case Nil_ $a__0) 
+                                          (case (Cons_ x1 x2) $a__0))`:
+  the scrutinee has no type and no branch names a known constructor]
+rc=0

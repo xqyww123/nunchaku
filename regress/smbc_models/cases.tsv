@@ -6,9 +6,11 @@
 # deadline        wall-clock ceiling in seconds for the whole run, or "-"
 # expectation     one word, spelled out in README.md
 #
-# Golden output files are NOT part of this commit: the shared driver
-# (regress/support/run_case) lands separately and the expectations are
-# generated once every code change in this release has landed.
+# This file is the suite's only case table: gen_dune.ml reads it and
+# generates dune.inc from it, so a row here is a rule that runs the case
+# and a rule that diffs <case>.expected against what it printed.  The
+# expectation column is read by README.md and by whoever refreshes a
+# golden, not by dune.
 #
 #case	model	problem	deadline	expectation
 m_one	m_one	chain	-	recovered

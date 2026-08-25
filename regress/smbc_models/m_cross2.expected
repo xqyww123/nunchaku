@@ -1,0 +1,9 @@
+SAT: {
+  type a_ := {$a__0, $a__1}.
+  type b_ := {$b__0, $b__1}.
+  val ys_ := ?__1.
+  val xs_ := (if ?__1 = ?__2 then $a__0 else $a__1).
+}
+{backend:smbc, time:Ns}
+--- stderr ---
+rc=0

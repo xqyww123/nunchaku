@@ -1,0 +1,11 @@
+SAT: {
+  type a_ := {$a__0, $a__1}.
+  val c_ := (?__unparsable a_).
+  val f_ := (fun (v1:a_) (v2:a_). $a__0).
+}
+{backend:smbc, time:Ns}
+--- stderr ---
+[Warning error when parsing model:
+  cannot read the value of `c_`: could not parse result: cannot find the datatype matched on in `(match ?s (case default $a__1))`:
+  the scrutinee has no type and no branch names a known constructor]
+rc=0

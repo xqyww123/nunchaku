@@ -1,0 +1,7 @@
+UNKNOWN
+(BACKEND_ERROR {backend:smbc, time:Ns} could not read smbc's output: could not parse result: two branches of the same value take arguments of different types,
+  `a_` and `b_`)
+--- stderr ---
+[Warning error when parsing model: expected a function on `a_`,
+  but the model binds `v1`]
+rc=0

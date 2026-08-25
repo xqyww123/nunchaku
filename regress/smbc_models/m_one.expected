@@ -1,0 +1,7 @@
+SAT: {
+  type a_ := {$a__0, $a__1}.
+  val c_ := g_ ?__1.
+}
+{backend:smbc, time:Ns}
+--- stderr ---
+rc=0

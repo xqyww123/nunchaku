@@ -1,0 +1,10 @@
+UNKNOWN
+(BACKEND_ERROR {backend:smbc, time:Ns} could not read smbc's output: could not parse result: expected leaf or test against a variable in [v1],
+  got: `match v1 G_ with
+          | Y_  -> ?__1 v1
+          | B_  -> ?__2 v1
+          | G_  -> ?__3 v1
+          | R_  -> ?__4
+        end`)
+--- stderr ---
+rc=0
