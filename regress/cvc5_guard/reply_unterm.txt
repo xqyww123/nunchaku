@@ -1,0 +1,4 @@
+sat
+((x__ (as @a___0 a__)) (y__ (as @a___1 a__)) (z__ (as @a___2 a__)))
+(error "l1
+l2 oops

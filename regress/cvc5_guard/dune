@@ -297,3 +297,75 @@
  (alias runtest)
  (action
   (diff collide.expected collide.out)))
+
+(rule
+ (targets escape.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../support/fake_solver.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  three.nun
+  reply_escape.txt)
+ (action
+  (with-stdout-to
+   escape.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_CVC5=%{exe:../support/fake_solver.exe}"
+    --setenv
+    "FAKE_REPLIES=%{dep:reply_escape.txt}"
+    --
+    --solvers
+    cvc5
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:three.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff escape.expected escape.out)))
+
+(rule
+ (targets unterm.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../support/fake_solver.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  three.nun
+  reply_unterm.txt)
+ (action
+  (with-stdout-to
+   unterm.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_CVC5=%{exe:../support/fake_solver.exe}"
+    --setenv
+    "FAKE_REPLIES=%{dep:reply_unterm.txt}"
+    --
+    --solvers
+    cvc5
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:three.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff unterm.expected unterm.out)))

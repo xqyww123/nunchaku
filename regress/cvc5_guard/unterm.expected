@@ -1,0 +1,13 @@
+UNKNOWN
+(BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} lexer error at file '': line 3, col 7 to line 4, col 7: unterminated string literal 
+ BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} lexer error at file '': line 3, col 7 to line 4, col 7: unterminated string literal 
+ BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} lexer error at file '': line 3, col 7 to line 4, col 7: unterminated string literal 
+ BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} lexer error at file '': line 3, col 7 to line 4, col 7: unterminated string literal 
+ BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} lexer error at file '': line 3, col 7 to line 4, col 7: unterminated string literal)
+--- stderr ---
+rc=0
