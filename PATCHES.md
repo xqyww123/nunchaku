@@ -1044,7 +1044,7 @@ This applies to the reproductions in this file too: a `?__117` or a
 yours will print.  Read them as "a number", and where one repeats within a
 repro, as "the same number".
 
-## 22. Solver pipes are close-on-exec from the start (commit: TBD)
+## 22. Solver pipes are close-on-exec from the start (commit: `9554ad5`)
 
 - **Motivation**: the pool starts several backends in parallel, each in its own
   thread.  `popen` created its three pipes and only then marked the parent-side
