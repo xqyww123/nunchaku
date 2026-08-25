@@ -1,0 +1,3 @@
+(result SAT
+  :model ((type a_ ($a__0 $a__1))
+          (val c_ (as ?u a_))))

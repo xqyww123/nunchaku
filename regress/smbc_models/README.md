@@ -156,6 +156,16 @@ went.
   it, so it is pruned before smbc sees it). The branch names therefore do
   not resolve to constructors and the datatype cannot be found. Expect the
   same containment, within the deadline.
+- **cast** — a TIP cast, `(as ?u a_)`, in a value. smbc 0.6.1 does not
+  emit one, but the parser used to `assert false` on it, which ends the
+  process rather than the entry. Expect a warning naming the cast and
+  `val c_ := (?__unparsable a_)`.
+- **ite_lambda_mismatch** — one value whose two `if` branches are lambdas
+  binding *different* types. The code that hoists the lambda out of the
+  branches assumed well-typedness and asserted; the model is smbc's, so it
+  reports instead. This one is not contained per entry — the hoisting runs
+  after the entries are converted — so expect
+  `UNKNOWN (BACKEND_ERROR …)` naming both types, exit 0.
 - **real_multi** — captured verbatim from real smbc 0.6.1 on
   `problems/multi.nun`. Its value for `k_` is a match on a *computed*
   scrutinee (`x0 G_`, not a variable), which the decision-tree conversion

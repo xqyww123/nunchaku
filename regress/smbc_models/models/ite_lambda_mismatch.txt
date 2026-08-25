@@ -1,0 +1,4 @@
+(result SAT
+  :model ((type a_ ($a__0 $a__1))
+          (type b_ ($b__0 $b__1))
+          (val f_ (ite true (lambda ((z a_)) $b__0) (lambda ((z b_)) $b__0)))))

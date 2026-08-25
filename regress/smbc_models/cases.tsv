@@ -32,4 +32,6 @@ m_eqn_24	m_eqn_24	distp	1	recovered
 m_dist_28	m_dist_28	distp	1	recovered
 m_chain_4000	m_chain_4000	chain	1	recovered
 real_part_app	real_part_app	part_app	-	recovered
+cast	cast	chain	-	contained
+ite_lambda_mismatch	ite_lambda_mismatch	two	-	contained
 real_multi	real_multi	multi	-	contained

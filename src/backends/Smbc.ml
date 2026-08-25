@@ -782,7 +782,10 @@ let rec term_of_tip st ~env ?ty (penv:parse_env) (t:A.term): term =
     let penv, v = CCList.fold_map (typed_var_of_tip st) penv v in
     let body = term_of_tip st ~env ~ty:T.ty_prop penv body in
     T.exists_l v body
-  | A.Cast (_,_) -> assert false
+  | A.Cast (_,_) ->
+    (* TIP's `(as t ty)`; smbc 0.6.1 does not emit it, but nothing stops a
+       future one, and an assertion would end the run *)
+    error_parse_modelf "cannot read the cast `@[%a@]`" A.pp_term t
 
 and term_of_id (st:parse_state) ?ty (env:parse_env) (s:string): term = match id_of_tip st env s with
   | `Const id -> T.const id
@@ -833,7 +836,13 @@ let extract_to_outer_function (t:term): term =
   let rec merge_ty_lists l1 l2 = match l1, l2 with
     | [], _ | _, [] -> []
     | ty1 :: tail1, ty2 :: tail2 ->
-      assert (T.equal ty1 ty2); (* by well-typedness *)
+      (* well-typedness would give this, but the model is smbc's: two
+         branches of one value can arrive binding different types *)
+      if not (T.equal ty1 ty2) then (
+        error_parse_modelf
+          "two branches of the same value take arguments of different types,@ \
+           `@[%a@]` and `@[%a@]`" T.pp ty1 T.pp ty2
+      );
       ty1 :: merge_ty_lists tail1 tail2
   in
   (* first, find the list of variables' types that
