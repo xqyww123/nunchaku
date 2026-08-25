@@ -1,13 +1,5 @@
 UNKNOWN
 (BACKEND_ERROR {backend:cvc5, time:Ns,
-                 message="options: OPTIONS"} expected a list of domain elements, got the atom `oops` 
- BACKEND_ERROR {backend:cvc5, time:Ns,
-                 message="options: OPTIONS"} expected a list of domain elements, got the atom `oops` 
- BACKEND_ERROR {backend:cvc5, time:Ns,
-                 message="options: OPTIONS"} expected a list of domain elements, got the atom `oops` 
- BACKEND_ERROR {backend:cvc5, time:Ns,
-                 message="options: OPTIONS"} expected a list of domain elements, got the atom `oops` 
- BACKEND_ERROR {backend:cvc5, time:Ns,
                  message="options: OPTIONS"} expected a list of domain elements, got the atom `oops`)
 --- stderr ---
 rc=0

@@ -1,13 +1,5 @@
 UNKNOWN
 (BACKEND_ERROR {backend:cvc5, time:Ns,
-                 message="options: OPTIONS"} lexer error at file '': line 4, col 7 to 8: illegal character 0x1b in string literal 
- BACKEND_ERROR {backend:cvc5, time:Ns,
-                 message="options: OPTIONS"} lexer error at file '': line 4, col 7 to 8: illegal character 0x1b in string literal 
- BACKEND_ERROR {backend:cvc5, time:Ns,
-                 message="options: OPTIONS"} lexer error at file '': line 4, col 7 to 8: illegal character 0x1b in string literal 
- BACKEND_ERROR {backend:cvc5, time:Ns,
-                 message="options: OPTIONS"} lexer error at file '': line 4, col 7 to 8: illegal character 0x1b in string literal 
- BACKEND_ERROR {backend:cvc5, time:Ns,
                  message="options: OPTIONS"} lexer error at file '': line 4, col 7 to 8: illegal character 0x1b in string literal)
 --- stderr ---
 rc=0

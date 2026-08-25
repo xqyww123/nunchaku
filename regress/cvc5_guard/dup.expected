@@ -2,22 +2,6 @@ UNKNOWN
 (BACKEND_ERROR {backend:cvc5, time:Ns,
                  message="options: OPTIONS"} cvc5 reported a domain with repeated elements: `((as @a___0 a__)
                                                  (as @a___0 a__)
-                                                 (as @a___0 a__))` 
- BACKEND_ERROR {backend:cvc5, time:Ns,
-                 message="options: OPTIONS"} cvc5 reported a domain with repeated elements: `((as @a___0 a__)
-                                                 (as @a___0 a__)
-                                                 (as @a___0 a__))` 
- BACKEND_ERROR {backend:cvc5, time:Ns,
-                 message="options: OPTIONS"} cvc5 reported a domain with repeated elements: `((as @a___0 a__)
-                                                 (as @a___0 a__)
-                                                 (as @a___0 a__))` 
- BACKEND_ERROR {backend:cvc5, time:Ns,
-                 message="options: OPTIONS"} cvc5 reported a domain with repeated elements: `((as @a___0 a__)
-                                                 (as @a___0 a__)
-                                                 (as @a___0 a__))` 
- BACKEND_ERROR {backend:cvc5, time:Ns,
-                 message="options: OPTIONS"} cvc5 reported a domain with repeated elements: `((as @a___0 a__)
-                                                 (as @a___0 a__)
                                                  (as @a___0 a__))`)
 --- stderr ---
 rc=0
