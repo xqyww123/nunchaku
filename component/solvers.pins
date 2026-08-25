@@ -1,0 +1,62 @@
+# The pinned ingredients of the certified combination, in ONE place.
+#
+# Everything that says "which solver, which bytes" for a release lives here and
+# nowhere else.  Two repositories read this file:
+#
+#   * this fork's CI -- .github/scripts/solver-pins.sh is sourced by
+#     release-fetch-cvc5.sh, release-build-unix.sh, release-smoke.sh and
+#     release-attach.sh, and .github/workflows/main.yml exports the win-64 row
+#     into the PowerShell cvc5 step;
+#   * isabelle-packaging-ci's conda/components/isabelle-nunchaku/recipe.yaml,
+#     which checks out this fork at the release tag and dies unless its own five
+#     `sha256:` literals, its cvc5/smbc versions and its subdir->platform table
+#     all agree with the records below.
+#
+# Why a data file rather than two synchronised tables of literals: before this
+# file existed, cvc5 1.3.4 was pinned by ten independent literals across the two
+# repositories with nothing comparing them, so a security bump applied to one
+# side would have shipped a combination that was never smoked, with every gate
+# green (measured during the 2026-08-25 pipeline review: the ten literals were
+# equal that day purely by hand).
+#
+# FORMAT.  One record per line; `#` starts a comment; fields are whitespace
+# separated.  A selector must match exactly one line -- solver-pins.sh fails
+# loudly on a missing or duplicated record, which is what makes a half-applied
+# edit here a red leg instead of a mixed release.
+#
+#   cvc5-version   <version>
+#   smbc-version   <version>
+#   smbc-commit    <40-hex commit the smbc version tag resolved to>
+#   cvc5 <isabelle-platform> <release-asset-basename> <sha256-of-the-zip>
+#
+# The `cvc5` records are also the fork's definition of WHICH FIVE PLATFORMS a
+# release covers: the release-gate job builds its expected asset list from them.
+
+# cvc5 >= 1.3.1 is required: the backend sends get-model-domain-elements, which
+# older cvc5 answers with an error.
+cvc5-version   1.3.4
+
+# smbc 0.6.1 is the version regress/README.md section 2 certifies.  Changing it
+# is a re-certification event.
+smbc-version   0.6.1
+
+# The commit `v0.6.1` resolved to, measured 2026-08-25 against the GitHub API
+# (/repos/c-cube/smbc/git/ref/tags/v0.6.1 -- a LIGHTWEIGHT tag, so the ref sha is
+# the commit itself).  A git tag is mutable: upstream can re-cut it, and because
+# smbc stamps its --version from smbc.opam's `version:` field the binary would
+# still say 0.6.1 and every version assertion would still pass.  This line is
+# the only thing that pins the bytes.  Both job families check it: the unix legs
+# hand it to `opam pin` as the fragment, the win-64 leg asserts `git rev-parse
+# HEAD` against it after the shallow tag clone.
+smbc-commit    87a5a750b5f0b2d7e1ef2459a8e62f07ed54e0d5
+
+# The five official static cvc5 release assets, one per Isabelle platform.
+# Digests measured 2026-08-25 against the cvc5-1.3.4 release.  The asset name is
+# paired with the platform HERE, so a matrix edit cannot pair an x86_64 cvc5
+# with an arm64 leg -- that pairing used to live in the workflow matrix, where
+# nothing cross-checked it.
+cvc5  x86_64-linux   cvc5-Linux-x86_64-static   dcdbfada0ce493ee98259c0816e0daafc561c223aadb3af298c2968e73ea39c6
+cvc5  arm64-linux    cvc5-Linux-arm64-static    2a4c108367f20b0c8990abd6b9535a5d62e08908d471d4671c00734e408f85bc
+cvc5  x86_64-darwin  cvc5-macOS-x86_64-static   5a7976affaf37dcf03ee44c3d0297c8e0ba08afd44ac832dab97400da726b852
+cvc5  arm64-darwin   cvc5-macOS-arm64-static    3840aa53f6ee6fc357415dcfe291d7f5ffec6cfb1ccca6fef64120a0d2be4cb6
+cvc5  x86_64-cygwin  cvc5-Win64-x86_64-static   279fe7e95810cfb62433fcfc2932f35325a665f32d3697ff33f75e31d5c6a179

@@ -113,19 +113,56 @@ grep -q '{backend:cvc5' smoke-cvc5.out || die "the cvc5 run was not answered by 
 # 5. smbc alone -- the arm 0.5.3 newly bundles, and it ships un-smoked otherwise
 # ---------------------------------------------------------------------------
 run_gold smbc --solvers smbc
-# The VERDICT is deliberately not pinned: the two platform probes measured
-# different ones for this input (SAT on macOS, "any definite answer" on
-# Windows), and which one gold.nun gets from smbc is not what the release
-# depends on.  What it depends on is that the bundled smbc is FOUND and RUNS,
-# and the absence of the unavailable-solver line says exactly that -- a missing
-# or unexecutable smbc prints it and would otherwise slip through as a bland
-# UNKNOWN answered by the scheduler.
-grep -Eq '^(SAT|UNSAT|UNKNOWN|TIMEOUT)' smoke-smbc.out \
-  || die "the smbc run produced no answer line"
-smbc_warn=$(tr -s '[:space:]' ' ' < smoke-smbc.err)
-case "$smbc_warn" in
-  *"solver not available"*) die "the bundled smbc was not available to the wrapper: $smbc_warn" ;;
-esac
+# ^SAT, unconditionally and on every platform, because it is the ONLY thing that
+# separates a working bundled smbc from a dead one.  Measured 2026-08-25 with
+# the real 0.5.3 binary and the real cvc5 1.3.4, over four broken payloads: an
+# smbc that exits 1, 200 executable bytes the kernel cannot exec, one that
+# prints unparseable output, and one that hangs -- all four answered with a
+# UNKNOWN/TIMEOUT line, all four left stderr EMPTY, and all four passed the
+# previous form of this assertion.
+#
+# In particular a present-but-broken smbc does NOT print the unavailable-solver
+# line: availability is `test -f && test -x` (src/core/Utils.ml), which 755
+# garbage satisfies, and nothing execs until the backend runs.  So the stderr
+# check that used to stand here could not fire and has been deleted.
+#
+# The verdict IS pinned, on all five: gold.nun under --solvers smbc answers SAT
+# with {backend:smbc -- x86_64-cygwin included (platform-probe run w2-r12.log:
+# `== gold.nun with --solvers smbc ==` -> exit=0 -> SAT -> {backend:smbc,
+# time:0.1s}), so no platform carve-out is warranted.
+#
+# BACKEND_ERROR is the second limb because it is what the exit-1, the
+# Exec-format-error and the unparseable-output payloads produce; the hang
+# produces (TIMEOUT {backend:scheduler}) with no {backend:smbc at all, which the
+# first limb catches.  `! grep ... || die`, not `grep ... && die`: the latter
+# becomes the script's exit status if it ever ends up last.
+grep -q '^SAT' smoke-smbc.out \
+  || die "the smbc run did not answer SAT: $(cat smoke-smbc.out)"
+! grep -q 'BACKEND_ERROR' smoke-smbc.out \
+  || die "the bundled smbc failed: $(cat smoke-smbc.out)"
+
+# ---------------------------------------------------------------------------
+# 6. the version record this leg hands to the packaging repository
+# ---------------------------------------------------------------------------
+# The two --version lines, captured HERE because this is the one script that
+# runs on all five legs under the runtime the binaries actually need -- on
+# x86_64-cygwin that is Isabelle's own bundled Cygwin, and no other step in the
+# pipeline can execute those two binaries at all.  release-attach.sh publishes
+# this file with the binaries, and isabelle-packaging-ci asserts the nunchaku
+# line's version and 40-hex commit fields against the release tag before it
+# packages anything.  Without it, the packaging side's only content check on the
+# two win-64 binaries is that their first two bytes are "MZ".
+#
+# Redirect to a file and read the file, never `prog | head -1`: this script's
+# other captures do the same, because a program that keeps writing after head
+# exits dies of SIGPIPE and fails the pipeline under `set -o pipefail`.
+"$plat_dir/solvers/smbc$EXE" --version > smbc-smoke-version.txt 2>&1
+{
+  printf 'nunchaku-bin --version: %s\n' "$(head -1 version.txt)"
+  printf 'smbc-bin --version: %s\n' "$(head -1 smbc-smoke-version.txt)"
+} > "$PWD/versions-$ISA_PLATFORM.txt"
+echo "=== versions-$ISA_PLATFORM.txt ==="
+cat "$PWD/versions-$ISA_PLATFORM.txt"
 
 echo
 echo "smoke OK for $ISA_PLATFORM"

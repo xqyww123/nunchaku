@@ -11,8 +11,8 @@
 # availability, and against any installable newer deps its code fails to
 # type-check (Sequence.t/iter mismatch, the `tip_parser` findlib name gone).
 # 0.4.2 and 0.5 fail the same way.  0.6.1 is the version the release certifies
-# (regress/README.md section 2), and it is the same git tag the four unix legs
-# pin, so all five ship the same solver.
+# (regress/README.md section 2), and it is the same commit the four unix legs
+# pin -- both read component/solvers.pins -- so all five ship the same solver.
 #
 # MUST run after w2-runtest.sh: the containers downgrade below breaks building
 # nunchaku's test runner.
@@ -21,7 +21,11 @@ ISA="$(cygpath -u "$ISA_HOME_W")/bin/isabelle"
 WS="$(cygpath -u "$GITHUB_WORKSPACE")"
 cd "$WS"
 
-SMBC_VERSION=0.6.1
+SRC_ROOT="$WS"
+# shellcheck source=.github/scripts/solver-pins.sh
+. "$WS/.github/scripts/solver-pins.sh"
+SMBC_VERSION=$(pin smbc-version)
+SMBC_COMMIT=$(pin smbc-commit)
 
 SECONDS=0
 # nunchaku (already built and staged) needed containers 3.x; smbc needs the
@@ -46,14 +50,19 @@ BUILDDIR="$HOME/smbc-build"
 rm -rf "$BUILDDIR"
 mkdir -p "$BUILDDIR"
 cd "$BUILDDIR"
-# The tag, not a release tarball: the four unix legs pin `#v0.6.1` through opam,
-# and one source of truth for "what smbc 0.6.1 is" is worth the Cygwin `git`
-# package the workflow installs for it.
+# A shallow clone of the tag, then the COMMIT asserted: the four unix legs hand
+# opam the commit directly, and this is the same pin from the other side.  A git
+# tag is mutable, and smbc stamps `%{version:smbc}` from smbc.opam's `version:`
+# field, so a re-cut v0.6.1 would still report 0.6.1 and pass every other
+# assertion in this script -- this line is the only thing that pins the bytes.
 git clone --depth 1 --branch "v$SMBC_VERSION" https://github.com/c-cube/smbc.git smbc-src
 cd smbc-src
+head=$(git rev-parse HEAD)
+[ "$head" = "$SMBC_COMMIT" ] \
+  || { echo "::error::smbc tag v$SMBC_VERSION moved: it is now $head, and component/solvers.pins pins $SMBC_COMMIT"; exit 1; }
 # dune stamps `%{version:smbc}` into the binary from this file, so the version
 # the release asserts is the tag's own.
-grep -q "^version: \"$SMBC_VERSION\"$" smbc.opam \
+grep -Fqx "version: \"$SMBC_VERSION\"" smbc.opam \
   || { echo "::error::smbc.opam at tag v$SMBC_VERSION does not declare version $SMBC_VERSION"; exit 1; }
 
 SECONDS=0
@@ -74,9 +83,12 @@ strip "$WS/artifacts/smbc.exe"
 # The shipped solver must be the certified one.  Redirect first and grep the
 # file: piping a program into `grep -q` under `set -o pipefail` can fail the
 # pipeline on SIGPIPE when grep exits on the first match.
+#
+# -Fqx, not -q: the measured line is exactly `version: 0.6.1`, and a bare
+# `grep -q 0.6.1` also matches `version: 0.6.11`.
 "$WS/artifacts/smbc.exe" --version > "$WS/smbc-version.txt" 2>&1
 cat "$WS/smbc-version.txt"
-grep -q "$SMBC_VERSION" "$WS/smbc-version.txt" \
-  || { echo "::error::smbc reports '$(cat "$WS/smbc-version.txt")', expected $SMBC_VERSION"; exit 1; }
+grep -Fqx "version: $SMBC_VERSION" "$WS/smbc-version.txt" \
+  || { echo "::error::smbc reports '$(cat "$WS/smbc-version.txt")', expected version: $SMBC_VERSION"; exit 1; }
 
 "$ISA" env bash -c 'isabelle_opam list' | grep -Ei 'msat|tip-parser|containers|iter' || true

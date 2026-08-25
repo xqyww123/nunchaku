@@ -9,6 +9,22 @@ on:
   pull_request:
     branches:
       - main
+  # Manual dispatch, so the release path can be REHEARSED on the fixed tree
+  # before a tag exists.  Without it the five release legs first execute on the
+  # tag push itself, which is the worst possible moment to discover that one of
+  # them never worked; and a throwaway tag is not a substitute, because the
+  # packaging recipe asserts the fork's VERSION file against the dispatched
+  # version.  RELEASE_CHECKLIST.md section 9 in isabelle-packaging-ci makes this
+  # dispatch step 1 of the release run plan.
+  workflow_dispatch:
+
+concurrency:
+  # Two pushes in a row, or a re-run overlapping a run, otherwise race on
+  # `gh release upload --clobber` and on the actions/cache save reservations.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Never cancel a tag run: cancelling one mid-attach is exactly how a
+  # half-attached release happens.
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') }}
 
 jobs:
   run:
@@ -36,11 +52,16 @@ jobs:
       - run: opam exec -- dune runtest --profile=release
 
   # ---------------------------------------------------------------------------
-  # Release binaries.  Five platforms, two artifacts each -- the nunchaku binary
-  # and the smbc 0.6.1 the component bundles from 0.5.3 on -- so ten release
-  # assets in total.  The naming contract and the reasoning behind it live in
-  # .github/scripts/release-attach.sh, which every leg calls, so there is
-  # exactly one definition of it.
+  # Release binaries.  Five platforms, two binaries each -- the nunchaku binary
+  # and the smbc the component bundles from 0.5.3 on -- so TEN BINARIES, TEN
+  # .sha256 SIDECARS and FIVE versions-<platform>.txt records: twenty-five
+  # release assets.  The naming contract and the reasoning behind it live in
+  # .github/scripts/release-attach.sh, which every leg calls and which the
+  # release-gate job below also reads, so there is exactly one definition of it.
+  #
+  # WHICH SOLVERS, WHICH BYTES: component/solvers.pins, read by every script
+  # here and by isabelle-packaging-ci's recipe.  Nothing in this file restates a
+  # solver version, asset name or digest.
   #
   #   conda subdir    Isabelle platform   runner            toolchain
   #   linux-64        x86_64-linux        ubuntu-latest     musl-static
@@ -65,6 +86,12 @@ jobs:
   release-binary:
     name: "release ${{ matrix.target.isa_platform }} (nunchaku + smbc) + CLI smoke"
     needs: run   # never attach a release asset from a tree whose test matrix is red
+    # Every push to main, and every manual dispatch, but not pull requests: a PR
+    # is already gated by `run` (the three-compiler build+test matrix), which is
+    # the actual correctness gate, and making every PR wait on a leg budgeted at
+    # 300 minutes is real cost.  Running on pushes to main is what makes "by tag
+    # time the build has already been proven" true, so that stays.
+    if: github.event_name != 'pull_request'
     timeout-minutes: 90
     runs-on: ${{ matrix.target.runner }}
     permissions:
@@ -81,31 +108,30 @@ jobs:
         # turn, each overwriting the last, so a list of platforms collapses onto
         # the last one (measured in isabelle-packaging-ci's release-rocksdict,
         # where three legs all came out win-64).
+        #
+        # No cvc5 asset or digest here.  They used to sit in these rows, next to
+        # the platform id but not bound to it, and duplicated again in the
+        # win-64 job and a third time in the packaging recipe -- ten literals in
+        # two repositories with nothing comparing them.  They now live in
+        # component/solvers.pins, keyed on the platform, and every consumer
+        # looks them up there.
         target:
           - isa_platform: x86_64-linux
             runner: ubuntu-latest
             musl: true
             ocaml: ocaml-variants.4.14.2+options,ocaml-option-musl,ocaml-option-static
-            cvc5_asset: cvc5-Linux-x86_64-static
-            cvc5_sha256: dcdbfada0ce493ee98259c0816e0daafc561c223aadb3af298c2968e73ea39c6
           - isa_platform: arm64-linux
             runner: ubuntu-24.04-arm
             musl: true
             ocaml: ocaml-variants.4.14.2+options,ocaml-option-musl,ocaml-option-static
-            cvc5_asset: cvc5-Linux-arm64-static
-            cvc5_sha256: 2a4c108367f20b0c8990abd6b9535a5d62e08908d471d4671c00734e408f85bc
           - isa_platform: x86_64-darwin
             runner: macos-15-intel
             musl: false
             ocaml: "4.14.2"
-            cvc5_asset: cvc5-macOS-x86_64-static
-            cvc5_sha256: 5a7976affaf37dcf03ee44c3d0297c8e0ba08afd44ac832dab97400da726b852
           - isa_platform: arm64-darwin
             runner: macos-15
             musl: false
             ocaml: "4.14.2"
-            cvc5_asset: cvc5-macOS-arm64-static
-            cvc5_sha256: 3840aa53f6ee6fc357415dcfe291d7f5ffec6cfb1ccca6fef64120a0d2be4cb6
     env:
       ISA_PLATFORM: ${{ matrix.target.isa_platform }}
     steps:
@@ -125,13 +151,15 @@ jobs:
 
       - name: Install build and test dependencies
         run: |
-          # setup-ocaml caches ~/.opam, and a cache saved after a previous run
-          # of THIS job still carries the containers 2.8.1 pin the smbc step
-          # leaves behind -- which contradicts nunchaku's `containers >= 3.0`
-          # and makes the dependency resolution fail on a warm cache while
-          # working on a cold one.  The win-64 leg hit exactly this and fixes it
-          # the same way (see .github/scripts/w2-deps.sh).
-          opam pin remove -y containers || true
+          # NOTHING to undo from a warm cache here.  setup-ocaml@v3 snapshots
+          # ~/.opam INSIDE its own step -- installer.ts:69-90, saveOpamCache()
+          # immediately after installOcaml(), inside `if (!opamCacheHit)`, and
+          # its post step saves only the dune cache -- so a restored root is a
+          # bare compiler switch and can never carry this job's own pins.  (The
+          # win-64 leg is different: it saves its root with an explicit
+          # actions/cache/save AFTER the smbc step, which is why
+          # .github/scripts/w2-deps.sh really does need its `pin remove`.)
+          #
           # -t installs the test dependencies too: release-build-unix.sh runs
           # `dune runtest` on this platform's own toolchain.
           opam install -t . --deps-only
@@ -139,13 +167,17 @@ jobs:
       - name: Build nunchaku + smbc (version from VERSION, tested, stripped)
         run: opam exec -- .github/scripts/release-build-unix.sh
 
-      - name: Link-footprint evidence
+      - name: Link-footprint and architecture evidence
         run: .github/scripts/release-verify-link.sh "$ISA_PLATFORM" nunchaku-bin smbc-bin
 
-      - name: Fetch cvc5 (pinned release)
-        run: |
-          .github/scripts/release-fetch-cvc5.sh \
-            "${{ matrix.target.cvc5_asset }}" "${{ matrix.target.cvc5_sha256 }}"
+      - name: Fetch cvc5 (pinned in component/solvers.pins)
+        run: .github/scripts/release-fetch-cvc5.sh
+
+      # cvc5 too: it is a release ingredient like the other two, and the asset
+      # it comes from is chosen by platform id.  This is the check that would
+      # notice a pins edit pairing an x86_64 asset with an arm64 leg.
+      - name: cvc5 architecture evidence
+        run: .github/scripts/release-verify-link.sh "$ISA_PLATFORM" cvc5-bin
 
       - name: CLI smoke (the assembled component, not the bare binary)
         env:
@@ -162,7 +194,12 @@ jobs:
           path: |
             nunchaku-bin
             smbc-bin
+            versions-${{ matrix.target.isa_platform }}.txt
           retention-days: 90
+          # Artifacts are scoped to the RUN, and "Re-run all jobs" reuses the
+          # run -- without this, the legs that had passed fail at this step on
+          # the second pass ("an artifact for the given name already exists").
+          overwrite: true
 
       - name: Attach binaries to the GitHub release (tag pushes only)
         if: startsWith(github.ref, 'refs/tags/v')
@@ -173,6 +210,7 @@ jobs:
   release-binary-win:
     name: "release x86_64-cygwin (nunchaku + smbc) + CLI smoke"
     needs: run
+    if: github.event_name != 'pull_request'   # see release-binary above
     # 300 minutes, not 90: this leg installs a full Isabelle distribution,
     # initialises its Cygwin, builds an OCaml switch from scratch on a cold
     # cache, and then builds nunchaku, its test suite and smbc under it.
@@ -196,6 +234,38 @@ jobs:
           echo "ISA_HOME_W=$root\Isabelle2025-2" >> $env:GITHUB_ENV
           echo "BASH_EXE=$root\Isabelle2025-2\contrib\cygwin\bin\bash.exe" >> $env:GITHUB_ENV
           echo "chosen root: $root (C free: $([math]::Round($cFree,1)) GB)"
+          # The opam cache key must be the dependency set AS CHECKED OUT.
+          # w2-build.sh rewrites nunchaku.opam's version field between the
+          # restore and the save, so `hashFiles('nunchaku.opam')` -- which the
+          # runner evaluates at each step -- produced two DIFFERENT keys: the
+          # exact-key hit was never true, the save key was constant, so run #1
+          # won the key permanently and every later restore came back through
+          # the loose prefix with run #1's opam root, forever.  Capture the
+          # pristine hash here, before any script touches the file, and use it
+          # for both.  The v5 salt abandons whatever the v4 key already froze.
+          $h = (Get-FileHash "$env:GITHUB_WORKSPACE\nunchaku.opam" -Algorithm SHA256).Hash.ToLower()
+          echo "OPAM_CACHE_KEY=w2-opam-v5-$h" >> $env:GITHUB_ENV
+          echo "opam cache key: w2-opam-v5-$h"
+
+      # The solver pins, read ONCE from component/solvers.pins by the same
+      # parser every other leg uses, and handed to the PowerShell steps below.
+      # This leg's cvc5 fetch stays in PowerShell (native Windows binary, no
+      # Cygwin needed, and rewriting it would restructure the one leg nobody can
+      # test locally) -- but it no longer carries its own copy of the pins.
+      # Git-for-Windows bash is on windows-latest from the first step; this leg
+      # already uses `shell: bash` for two other steps.
+      - name: Read the solver pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          . .github/scripts/solver-pins.sh
+          read -r asset sha <<< "$(pin cvc5 x86_64-cygwin)"
+          {
+            echo "CVC5_VERSION=$(pin cvc5-version)"
+            echo "CVC5_ASSET=$asset"
+            echo "CVC5_SHA256=$sha"
+          } >> "$GITHUB_ENV"
+          echo "cvc5 $(pin cvc5-version) / $asset / $sha"
 
       - name: Restore cached Isabelle installer
         id: isaexe
@@ -211,12 +281,38 @@ jobs:
           New-Item -ItemType Directory -Force "$env:RUNNER_TEMP\isadl" | Out-Null
           # isabelle.in.tum.de redirects to plain-HTTP dist.isabelle.cit.tum.de:80,
           # which the runner cannot reach (measured) -- use the HTTPS target directly.
-          curl.exe -sSL --retry 3 -o "$env:RUNNER_TEMP\isadl\Isabelle2025-2.exe" 'https://dist.isabelle.cit.tum.de/dist/Isabelle2025-2.exe?token=Isabelle'
+          # -f: WITHOUT it an HTTP error page is written to the file and curl
+          # still exits 0, the step goes green, the bad file is cached under a
+          # fixed key, and every later run restores it and dies in `7z x` --
+          # permanently red, unfixable from inside the repository.  With -f,
+          # --retry also covers 5xx.
+          curl.exe -fsSL --retry 3 -o "$env:RUNNER_TEMP\isadl\Isabelle2025-2.exe" 'https://dist.isabelle.cit.tum.de/dist/Isabelle2025-2.exe?token=Isabelle'
           if ($LASTEXITCODE -ne 0) { exit 1 }
-          Get-Item "$env:RUNNER_TEMP\isadl\Isabelle2025-2.exe" | Format-List Length
+
+      # Asserted after the download AND after a restore, because a poisoned
+      # cache entry is exactly the case the download step never sees.
+      # Content-Length measured 2026-08-25:
+      #   HEAD https://dist.isabelle.cit.tum.de/dist/Isabelle2025-2.exe?token=Isabelle
+      #   -> Content-Length: 1069837790, Last-Modified: Sun, 18 Jan 2026
+      # -- a frozen release file, so an exact size is right and loud.  It is the
+      # one download in this pipeline with no digest; replace this with a pinned
+      # sha256 once a run records one.  The size alone already makes a poisoned
+      # cache impossible, which is the point.
+      - name: Assert the installer is the pinned one
+        shell: pwsh
+        run: |
+          $exe = "$env:RUNNER_TEMP\isadl\Isabelle2025-2.exe"
+          $len = (Get-Item $exe).Length
+          Write-Host "installer length: $len"
+          if ($len -ne 1069837790) {
+            Write-Error "Isabelle2025-2.exe is $len bytes, expected 1069837790 -- truncated download or a poisoned cache entry"
+            exit 1
+          }
 
       - name: Save Isabelle installer to cache
-        if: always() && steps.isaexe.outputs.cache-hit != 'true'
+        # success(), not always(): cache what we just successfully fetched and
+        # asserted, never what a failed run left behind.
+        if: steps.isaexe.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}\isadl\Isabelle2025-2.exe
@@ -237,8 +333,14 @@ jobs:
           # detaches (launch4j GUI wrapper, exit 259) so it cannot be awaited.
           python "$env:GITHUB_WORKSPACE\.github\scripts\w2-cygwin-init.py"
           if ($LASTEXITCODE -ne 0) { exit 1 }
-          # sanity: bash, symlinks, basic tools
-          & $env:BASH_EXE --login -c 'uname -a; ls -l /usr/bin/awk; echo CYGWIN_OK'
+          # sanity: bash, symlinks, basic tools.  `set -e` FIRST: the status of a
+          # `;`-list is the LAST command's, so without it the whole check is
+          # `echo`'s exit status and cannot fail (measured:
+          # `bash -c 'false; ls /nonexistent; echo OK'` exits 0).  That matters
+          # because w2-cygwin-init.py no-ops -- still printing "cygwin init
+          # done", still exiting 0 -- whenever the `isabelle/uninitialized`
+          # marker is absent.
+          & $env:BASH_EXE --login -c 'set -e; uname -a; ls -l /usr/bin/awk; echo CYGWIN_OK'
           exit $LASTEXITCODE
 
       - name: POSIX path bookkeeping
@@ -258,9 +360,11 @@ jobs:
           $ok = $false
           foreach ($site in @($mirror, 'https://mirrors.kernel.org/sourceware/cygwin/')) {
             Write-Host "===== cygwin setup from $site ====="
-            # `git` is in the list for w2-smbc.sh, which takes smbc from its
-            # upstream git tag -- the same tag the four unix legs pin -- so all
-            # five legs ship the same solver from one source of truth.
+            # `git` is in the list for w2-smbc.sh, which clones smbc's upstream
+            # tag and then asserts HEAD against the commit
+            # component/solvers.pins names -- the same commit the four unix legs
+            # hand to opam, so all five legs ship the same solver bytes from one
+            # source of truth.
             $pkgargs = @('--site', $site, '--no-verify',
                          '--local-package-dir', 'C:\temp\cygpkg',
                          '--root', "$env:ISA_HOME_W\contrib\cygwin",
@@ -282,7 +386,14 @@ jobs:
           # sanity must name /usr/bin paths: the runner's Windows PATH (mingw
           # gcc, Strawberry patch, Git unzip, Git git) leaks into cygwin shells
           # and can satisfy a bare "command -v" spuriously (measured)
-          & $env:BASH_EXE --login -c 'set -e; for t in opam gcc make m4 patch unzip git strip; do test -x /usr/bin/$t || { echo "MISSING /usr/bin/$t"; exit 1; }; done; /usr/bin/opam --version; /usr/bin/gcc --version | head -1; /usr/bin/git --version'
+          # install, tr, od and file come from the SHARED scripts this leg runs
+          # (release-smoke.sh stages the component with `install -m 755` and
+          # normalises stderr with `tr`; release-verify-link.sh reads the PE
+          # header with `od` and prints `file` output), and cygcheck from
+          # release-verify-link.sh's cygwin branch.  Listing them here turns a
+          # missing tool into a one-line diagnosis at minute five instead of a
+          # confusing failure at minute two hundred and fifty.
+          & $env:BASH_EXE --login -c 'set -e; for t in opam gcc make m4 patch unzip git strip install tr od file cygcheck; do test -x /usr/bin/$t || { echo "MISSING /usr/bin/$t"; exit 1; }; done; /usr/bin/opam --version; /usr/bin/gcc --version | head -1; /usr/bin/git --version'
           exit $LASTEXITCODE
 
       - name: Restore opam root cache
@@ -290,9 +401,11 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ~\.opam
-          key: w2-opam-v4-${{ hashFiles('nunchaku.opam') }}
+          key: ${{ env.OPAM_CACHE_KEY }}
+          # v5-scoped, NOT the bare `w2-opam-` prefix: with the loose prefix the
+          # stale v4 entry is restored anyway and the salt bump buys nothing.
           restore-keys: |
-            w2-opam-
+            w2-opam-v5-
 
       - name: ocaml_setup_base (opam init + OCaml 4.14.1 switch)
         shell: pwsh
@@ -324,35 +437,48 @@ jobs:
           & $env:BASH_EXE --login "$env:WS_POSIX/.github/scripts/w2-runtest.sh"
           exit $LASTEXITCODE
 
-      - name: Build smbc 0.6.1 (from the upstream git tag)
+      - name: Build smbc (pinned commit, from the upstream git tag)
         shell: pwsh
         run: |
           & $env:BASH_EXE --login "$env:WS_POSIX/.github/scripts/w2-smbc.sh"
           exit $LASTEXITCODE
 
       - name: Save opam root cache
-        if: always() && steps.opamroot.outputs.cache-hit != 'true'
+        # success(), not always(): a run that died inside w2-smbc.sh must not
+        # leave a half-configured switch in the cache, and with the key now
+        # stable (see OPAM_CACHE_KEY above) the first write to a key wins
+        # permanently.
+        if: steps.opamroot.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: ~\.opam
-          key: w2-opam-v4-${{ hashFiles('nunchaku.opam') }}
+          key: ${{ env.OPAM_CACHE_KEY }}
 
-      - name: Fetch cvc5 (pinned release, Win64 static)
+      - name: Fetch cvc5 (pinned in component/solvers.pins)
         shell: pwsh
         run: |
-          curl.exe -sSL --retry 3 -o cvc5.zip https://github.com/cvc5/cvc5/releases/download/cvc5-1.3.4/cvc5-Win64-x86_64-static.zip
+          # Asset, digest and version all come from the pins, exported by the
+          # "Read the solver pins" step above -- this leg no longer carries its
+          # own copy of any of the three.
+          curl.exe -fsSL --retry 3 -o cvc5.zip "https://github.com/cvc5/cvc5/releases/download/cvc5-$env:CVC5_VERSION/$env:CVC5_ASSET.zip"
           if ($LASTEXITCODE -ne 0) { exit 1 }
           $h = (Get-FileHash cvc5.zip -Algorithm SHA256).Hash.ToLower()
-          if ($h -ne '279fe7e95810cfb62433fcfc2932f35325a665f32d3697ff33f75e31d5c6a179') {
-            Write-Error "cvc5.zip sha256 mismatch: $h"; exit 1 }
+          if ($h -ne $env:CVC5_SHA256) {
+            Write-Error "cvc5.zip sha256 is $h, expected $env:CVC5_SHA256"; exit 1 }
           Expand-Archive -Force cvc5.zip -DestinationPath cvc5dist
           New-Item -ItemType Directory -Force solvers | Out-Null
-          Copy-Item cvc5dist\cvc5-Win64-x86_64-static\bin\cvc5.exe solvers\cvc5.exe
+          Copy-Item "cvc5dist\$env:CVC5_ASSET\bin\cvc5.exe" solvers\cvc5.exe
           # the pinned cvc5 version, asserted rather than assumed -- cvc5 is a
-          # native Windows binary, so it runs here without Cygwin
+          # native Windows binary, so it runs here without Cygwin.  A literal
+          # substring test, not a regex: `-match 'cvc5 1\.3\.4'` needs the dots
+          # escaped by hand every time the pin moves, and the unescaped form
+          # matches `cvc5 1x3y4`.  Measured first line:
+          # "cvc5 1.3.4 [git f3b21c4 on branch HEAD]", so the trailing space is
+          # always there.
           $v = (& .\solvers\cvc5.exe --version | Select-Object -First 1)
           Write-Host "cvc5: $v"
-          if ($v -notmatch 'cvc5 1\.3\.4') { Write-Error "expected cvc5 1.3.4, got: $v"; exit 1 }
+          if (-not $v.Contains("cvc5 $env:CVC5_VERSION ")) {
+            Write-Error "expected cvc5 $env:CVC5_VERSION, got: $v"; exit 1 }
 
       - name: CLI smoke (the assembled component, under Isabelle's Cygwin)
         shell: pwsh
@@ -370,11 +496,13 @@ jobs:
       - name: Upload release binaries
         uses: actions/upload-artifact@v4
         with:
-          name: nunchaku-x86_64-cygwin
+          name: nunchaku-${{ env.ISA_PLATFORM }}
           path: |
             nunchaku-bin
             smbc-bin
+            versions-${{ env.ISA_PLATFORM }}.txt
           retention-days: 90
+          overwrite: true   # see the unix leg's upload
 
       - name: Attach binaries to the GitHub release (tag pushes only)
         if: startsWith(github.ref, 'refs/tags/v')
@@ -382,6 +510,60 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: .github/scripts/release-attach.sh
+
+  # ---------------------------------------------------------------------------
+  # The release gate.  Every leg creates the release as a DRAFT and attaches its
+  # own five files; nothing until now asserts that all five legs arrived.  With
+  # fail-fast off and win-64 in its own job, the previous shape published a LIVE
+  # v<version> from whichever leg finished first -- a tag push would have
+  # announced a release carrying two of the ten binaries.
+  #
+  # Ordering note for whoever dispatches the packaging repository: a DRAFT
+  # release is not served at https://github.com/.../releases/download/<tag>/...,
+  # which is exactly the URL isabelle-packaging-ci's release-nunchaku.yml
+  # fetches.  So this job's `--draft=false` is load-bearing: packaging must not
+  # be dispatched until it has run.  Written down in RELEASE_CHECKLIST.md
+  # section 9 as well, which is where the dispatcher will actually be looking.
+  # ---------------------------------------------------------------------------
+  release-gate:
+    name: "release gate (all five platforms attached, then un-draft)"
+    needs: [release-binary, release-binary-win]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert the full asset contract, then publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          . .github/scripts/solver-pins.sh
+          # Expected set built from the SAME two definitions the legs used: the
+          # platform list in component/solvers.pins and the name list in
+          # release-attach.sh.  Nothing here restates a filename.
+          : > expected.txt
+          while IFS= read -r plat; do
+            .github/scripts/release-attach.sh --list "$plat" >> expected.txt
+          done < <(pin_platforms)
+          sort -o expected.txt expected.txt
+          n=$(wc -l < expected.txt)
+          echo "the contract names $n files:"; cat expected.txt
+
+          gh release view "$GITHUB_REF_NAME" --json assets \
+            --jq '.assets[].name' | sort > actual.txt
+          echo "the release carries $(wc -l < actual.txt):"; cat actual.txt
+
+          if ! diff -u expected.txt actual.txt > assets.diff; then
+            echo "::error::the release does not carry exactly the contracted files"
+            cat assets.diff
+            exit 1
+          fi
+
+          # Only now does v<version> become visible to the packaging repository.
+          gh release edit "$GITHUB_REF_NAME" --draft=false
+          echo "$GITHUB_REF_NAME: $n assets asserted, release taken out of draft"
 
   benchmark:
     name: benchmark

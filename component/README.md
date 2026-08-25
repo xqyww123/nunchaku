@@ -23,11 +23,19 @@ like this:
                               per-platform variant of it to keep in step.
   <PLAT>/nunchaku-bin         the nunchaku binary built by the fork's CI
                               (`nunchaku-bin.exe` on `x86_64-cygwin`)
-  <PLAT>/solvers/cvc5         official static cvc5 release (>= 1.3.1)
-  <PLAT>/solvers/smbc         smbc 0.6.1, built by the fork's CI from
-                              `github.com/c-cube/smbc` tag `v0.6.1`
+  <PLAT>/solvers/cvc5         official static cvc5 release (>= 1.3.1), the
+                              asset and digest `./solvers.pins` names for <PLAT>
+  <PLAT>/solvers/smbc         smbc, built by the fork's CI from
+                              `github.com/c-cube/smbc` at the commit
+                              `./solvers.pins` pins
   COMMIT                      full 40-char SHA this build was made from
-  LICENSE, LICENSE-cvc5       license texts
+  LICENSE                     the fork's own licence (BSD-2-Clause)
+  LICENSE-cvc5                cvc5's COPYING (BSD-3-Clause)
+  LICENSE-smbc                smbc's LICENSE (BSD-2-Clause)
+
+`./solvers.pins` is not part of the installed component: it is the one place the
+two bundled solvers are pinned, read by this fork's CI and by the packaging
+recipe, which asserts its own copies of the digests against it.
 
 Why `etc/settings` names the platform through a placeholder rather than picking
 one at run time from `$ISABELLE_PLATFORM64`: a package contains exactly one

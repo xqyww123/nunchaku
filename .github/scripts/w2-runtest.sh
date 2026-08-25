@@ -2,7 +2,10 @@
 # win-64 release leg: the full `dune runtest` gate, under the Cygwin toolchain.
 # Must run BEFORE the smbc step: that step downgrades containers
 # to 2.8.1, which would break the test build (nunchaku needs containers 3.x).
-set -uo pipefail
+# -e like the other eleven scripts.  Every command below already handles its own
+# status explicitly (`|| { ...; exit 1; }`, `|| rc=$?`, `|| true`), which is
+# -e-compatible; without -e a line added later would fail silently.
+set -euo pipefail
 ISA="$(cygpath -u "$ISA_HOME_W")/bin/isabelle"
 WS="$(cygpath -u "$GITHUB_WORKSPACE")"
 cd "$WS" || exit 1

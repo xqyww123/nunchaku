@@ -298,7 +298,7 @@ and the scheduler component that runs them is the *pool*.
   dispatch, so those inherit it.
 - **Flag family**: suppression is now the default.  `--no-spurious-models` is
   kept as an accepted no-op (an unknown option exits 2, and the shipped
-  wrapper `component/x86_64-linux/nunchaku` passes it);
+  wrapper `component/nunchaku` passes it);
   `--allow-spurious-models`, on the binary's own command line, is the way
   back to a printed model.  The wrapper keeps passing the old flag on
   purpose: against this binary it does nothing, but it keeps the component
@@ -540,7 +540,7 @@ and the scheduler component that runs them is the *pool*.
 - **The wrapper's discipline is load-bearing**: Isabelle requests all
   four of `cvc5 kodkod paradox smbc`, so an empty value for *any* of
   them fails every Isabelle call.  That is the intended loudness, but
-  it means `component/x86_64-linux/nunchaku` must never export an empty
+  it means `component/nunchaku` must never export an empty
   value — today it exports one unconditional absolute path.
 
 ## 13. A solver reply is never fatal, for the whole decoder (commit: `59a1c0b`)

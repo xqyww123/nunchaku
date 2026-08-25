@@ -1,0 +1,6 @@
+# The win-64 release leg runs .github/scripts/w2-*.sh straight out of
+# actions/checkout@v4 through Isabelle's bundled Cygwin bash.  Today
+# windows-latest leaves core.autocrlf off and the scripts arrive with LF, so the
+# leg is green -- but that is a runner-image default, not a guarantee, and a
+# CRLF `set -euo pipefail\r` fails Cygwin bash before it does anything.  Pin it.
+*.sh text eol=lf

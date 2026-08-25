@@ -67,7 +67,11 @@ filling it (`../component/README.md` describes the layout in full):
   sends `get-model-domain-elements`, which older cvc5 answers with an
   error);
 - `x86_64-linux/solvers/smbc` — smbc **0.6.1**, built from
-  `github.com/c-cube/smbc` tag `v0.6.1`.  0.4.1, which the Isabelle
+  `github.com/c-cube/smbc` at the commit `../component/solvers.pins` pins
+  (`smbc-commit`; it is what tag `v0.6.1` resolved to on 2026-08-25).  The
+  commit, not the tag: a git tag is mutable, and smbc stamps its `--version`
+  from `smbc.opam`, so a re-cut tag would ship different bytes still reporting
+  `0.6.1`.  Re-certifying a new smbc means editing that one line.  0.4.1, which the Isabelle
   distribution ships, cannot be rebuilt on any current toolchain: its
   dependencies cap OCaml below 4.08, and that era has no arm64 macOS
   backend at all.  0.6.1 needs `containers 2.8.1` from the opam archive
