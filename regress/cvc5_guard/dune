@@ -369,3 +369,79 @@
  (alias runtest)
  (action
   (diff unterm.expected unterm.out)))
+
+; NUNCHAKU_CVC5 set to the empty string, for a solver that was requested: the
+; error names the variable and the run fails, instead of silently resolving
+; cvc5 from the PATH.
+(rule
+ (targets empty_cvc5.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  three.nun)
+ (action
+  (with-stdout-to
+   empty_cvc5.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_CVC5="
+    --
+    --solvers
+    cvc5
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:three.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff empty_cvc5.expected empty_cvc5.out)))
+
+; the same empty variable, for a solver that was NOT requested: never read, so
+; the run answers normally.  The smbc reply is one recorded verbatim from real
+; smbc 0.6.1 on this problem.
+(rule
+ (targets empty_cvc5_smbc.out)
+ (deps
+  %{exe:../support/run_case.exe}
+  %{exe:../support/fake_solver.exe}
+  %{exe:../../src/main/nunchaku.exe}
+  three.nun
+  reply_smbc.txt)
+ (action
+  (with-stdout-to
+   empty_cvc5_smbc.out
+   (run
+    %{exe:../support/run_case.exe}
+    --exe
+    %{exe:../../src/main/nunchaku.exe}
+    --deadline
+    20
+    --setenv
+    "NUNCHAKU_CVC5="
+    --setenv
+    "NUNCHAKU_SMBC=%{exe:../support/fake_solver.exe}"
+    --setenv
+    "FAKE_REPLIES=%{dep:reply_smbc.txt}"
+    --
+    --solvers
+    smbc
+    --no-color
+    -j
+    1
+    --timeout
+    5
+    %{dep:three.nun}))))
+
+(rule
+ (alias runtest)
+ (action
+  (diff empty_cvc5_smbc.expected empty_cvc5_smbc.out)))

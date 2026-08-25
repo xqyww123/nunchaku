@@ -1,0 +1,4 @@
+--- stderr ---
+failure: NUNCHAKU_CVC5 is set to the empty string: set it to a path, or unset it to look cvc5 up in the PATH
+
+rc=1

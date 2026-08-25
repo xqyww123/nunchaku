@@ -350,7 +350,16 @@ let ignore_catch f x =
 
 let external_program ~env_var ~default =
   let set = Sys.getenv_opt env_var in
-  let prog = match set with Some s when s <> "" -> s | _ -> default in
+  let prog = match set with
+    | Some "" ->
+      (* the empty string is never a valid program name, and there is no user
+         for whom "fall back to the PATH" is the right reading of it *)
+      failwithf
+        "%s is set to the empty string: set it to a path, or unset it to look %s up in the PATH"
+        env_var default
+    | Some s -> s
+    | None -> default
+  in
   (* the one place that answers "which binary did this run actually use, and
      did the environment decide it?", for all five backends at once *)
   debugf 3 "@[<2>%s is %s:@ using `%s`@]"

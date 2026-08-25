@@ -1,0 +1,5 @@
+(result SAT
+   :model ((type a_ ($a__0 $a__1 $a__2))
+           (val z_ $a__1)
+           (val x_ $a__0)
+           (val y_ $a__2)))

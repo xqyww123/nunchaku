@@ -194,9 +194,11 @@ val ignore_catch : ('a -> 'b) -> 'a -> unit
 
 val external_program : env_var:string -> default:string -> string
 (** [external_program ~env_var ~default] is the program to invoke for an
-    external tool: the value of the environment variable [env_var], when set
-    and non-empty (typically an absolute path), otherwise [default] (a plain
-    name, looked up in the PATH). *)
+    external tool: the value of the environment variable [env_var] when it is
+    set (typically an absolute path), otherwise [default] (a plain name, looked
+    up in the PATH).
+    @raise Failure if [env_var] is set to the empty string, which is never a
+    valid program name. *)
 
 val external_program_available : string -> bool
 (** Whether the given program (as returned by {!external_program}) can be
