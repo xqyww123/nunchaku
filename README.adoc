@@ -99,7 +99,8 @@ The rules are the same for all five:
   a run that silently used a different solver than the caller intended is the
   failure mode these variables exist to prevent.  The variable is only read for
   a solver that was actually requested, so an empty value for a solver you did
-  not ask for costs nothing.
+  not ask for costs nothing — but note that without a `--solvers` flag *every*
+  backend is requested, so every one of the five variables is read.
 
 `nunchaku --debug 3` prints, for every backend it considers, which variable was
 consulted, whether it was set, and which path it settled on.

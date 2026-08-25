@@ -151,7 +151,7 @@ at the next sync.  Base commit: d23a876.
   type; before: `SAT: { type a_ := {$a__0, $a__1}. val z_ := @a___2. }`
   — a model with two elements for a goal that needs three, and a value
   outside the domain it just printed; after:
-  `UNKNOWN (BACKEND_ERROR … cvc5 rejected `get-model-domain-elements` …)`,
+  `` `UNKNOWN (BACKEND_ERROR … cvc5 rejected `get-model-domain-elements` …)` ``,
   exit 0.
 - **The TY comparison does not use `pp_gty`**: that printer mangles
   every non-alphanumeric character and flattens application to
@@ -171,13 +171,30 @@ at the next sync.  Base commit: d23a876.
   token, e.g. `?__184 |@(to_ a_ Bool)_0| v`.  Reading the names out of
   the reply makes the two coincide, so those constants now appear as
   ordinary model entries (`val $$anon_fun_0 := (fun …)`) and the id
-  counter shifts.  One problem (`bench/bugs/ho_copy_set2.nun`) went from
-  an uncaught `FO.Env.UndefinedID` to a model for the same reason.
+  counter shifts.
+- **The `pp_gty` comparison also fails fatally on one problem**:
+  `bench/bugs/ho_copy_set2.nun` gives an uncaught
+  `Nunchaku_core.FO.Env.UndefinedID`, rc=1 with empty stdout.  That is a
+  property of the rejected variant, not of the previous behaviour —
+  before this patch the same problem answers `SAT` with a model.
+- **The comparison is tied to the declaration by construction**, not by
+  inspection: `pp_ty` in the problem printer and the domain parser's
+  expected type are the same function, `sexp_of_gty_`, differing only in
+  whether naming an id may register it.  Their agreement is what the
+  paragraph above rests on, so it must not be something a future edit can
+  break silently; the compound-sort case in `regress/cvc5_guard` is the
+  test that would catch it if it did.
 - **CVC4 is not affected and must not be "completed" later**: its
-  `get_finite_domain_` reads an explicitly declared cardinal
-  (`(fmf.card.val …)`, parsed by `parse_int_`), not a list length.
-  There is no counting defect there to port a fix to.  Only the sexp
-  decoder change above touches `CVC4.ml`.
+  `get_finite_domain_` reads an explicitly declared cardinal —
+  `fmf.card.val`, parsed by `parse_int_` — not a list length.
+  There is no counting defect there to port a fix to.  Only the reply
+  classification below touches `CVC4.ml`.
+- **The RESOLUTION's step 3 named the wrong table** for the
+  problem-symbol guard: `decode.symbols` holds the symbols we asked a
+  value for, so a reply naming any other declared name — the type's own
+  sort, `(as a__ a__)` — passed the guard and fabricated a model whose
+  `val x_ := @a___0` lies outside the domain it prints.  The test is
+  `decode.id_to_name`, which is exactly "a name we declared to cvc5".
 - **Upstream PR**: not yet submitted.
 
 ## 8. String literals scanned by a lexer sub-rule
@@ -205,8 +222,13 @@ at the next sync.  Base commit: d23a876.
   reply cut off mid-literal: before, `Error: in the interface to cvc5:
   … lexing failed on char "` and the run aborts; after,
   `line 1, col 7 to line 2, col 7: unterminated string literal` and
-  exit 0 (patch 7 is what makes the tightening safe: a strict lexer
-  whose every complaint is fatal would be a reliability regression).
+  exit 0.
+- **The tightening is only safe together with patch 12**: a strict lexer
+  whose every complaint is fatal would be a reliability regression.
+  Patch 7 covered the domain reply only, and until patch 12 the tightened
+  class *created* a fatal that main did not have — an escape byte in a
+  get-value string is `SAT` with the byte in the model on main, and was
+  an abort here.
 - **Upstream PR**: not yet submitted.
 
 ## 9. Unquoting a backend's error message for display
@@ -268,6 +290,57 @@ at the next sync.  Base commit: d23a876.
   value — today it exports one unconditional absolute path.
 - **Upstream PR**: not yet submitted.
 
+## 12. A solver reply is never fatal, for the whole decoder
+
+- **Motivation**: patch 7 stated the rule — nunchaku's own broken
+  invariants are `Error`, anything the solver sends that we cannot
+  understand is `Backend_err` — but made it true only of the
+  finite-domain reply.  The get-value reply is decoded by a different
+  function, and `get_model_`'s two decoder errors plus every parse error
+  in `parse_simple_model_` / `parse_term_` / `parse_ty_` still raised
+  `Error`, which is `Res.Error`, which is `S.Shortcut`: exit 1 with the
+  sibling backends killed.  A rule that is written down and not true is
+  worse than no rule, and patch 8's tightened character class made it
+  worse still.
+- **Repro** (canned replies, malformed in the get-value answer rather
+  than the domain answer), before → after, all `--solvers cvc5 -j 1`:
+
+  | reply | before | after |
+  | --- | --- | --- |
+  | unterminated string literal | `Error: … lexer error`, rc=1 | `UNKNOWN (BACKEND_ERROR …)`, rc=0 |
+  | `sat` then EOF | `Error: … unexpected end of input`, rc=1 | same, rc=0 |
+  | `(this is not a model)` | `Error: … expected pair key/value`, rc=1 | same, rc=0 |
+  | ESC inside a get-value string | `Error: … illegal character 0x1b`, rc=1 | same, rc=0 |
+
+  The last row is a fatal that main does not have: main prints `SAT` with
+  the escape byte in the model.
+- **Behavior**: everything from `find_atom_` down decodes what the solver
+  sent, which is untrusted input; that whole region raises `Backend_err`,
+  and a comment at its head says so, so the next decoder function added is
+  right by default.  `Error` keeps exactly the invariants that cannot
+  depend on a reply — witness lookup and problem printing.
+  `parse_simple_model_` no longer looks its key up with `ID.Tbl.find` and
+  `assert false`: it names the four ways a key can be wrong, so a reply
+  about a symbol we never asked about is reported instead of escaping as
+  a bare `Not_found`.
+- **`read_res_` also catches anything else the decoder throws**, reports
+  it as a backend error and warns with the exception named.  This is not
+  belt-and-braces: with a stale cvc5, three of the 200 in-tree problems
+  ended in an uncaught OCaml exception, because patch 7 stopped the run
+  shortcutting on a fabricated model and later option arms then reached
+  decoder bugs main never got to — `bench/bugs/pseudo_prop.nun`
+  (`FO.Util.Parse_err`), `bench/tests/sat/data_select.nun`
+  (`FO.Env.UndefinedID`) and `bench/tests/unsat/nat_le.nun`
+  (`Model.ml:269 Assertion failed`).  Until this patch those three
+  falsified the claim of `UNKNOWN` and exit 0 that README.adoc and patch 7
+  both make.  `Sys.Break` and `Out_of_memory` are re-raised: they are
+  conditions of the process, not properties of the reply.
+- **`Model.ml`'s assertion is named, not masked**: it is reachable from a
+  backend's reply, so it becomes an `invalid_arg` spelled like the sibling
+  case above it — `DT.of_flat: case tests an unbound variable` — and a
+  backend can report a cause instead of a file and a line number.
+- **Upstream PR**: not yet submitted.
+
 ## Recorded exposure: the wrapper pins only cvc5
 
 `component/x86_64-linux/nunchaku` exports **only** `NUNCHAKU_CVC5`, and
@@ -287,8 +360,15 @@ the record that it is owed.
 cannot produce a stale-solver or malformed reply, and the gate has no
 column for "must fail loudly".  `regress/cvc5_guard/` replays canned
 replies through a fake solver under `dune runtest`, so the loud-failure
-behaviour of patches 7, 8 and 11 is pinned on every platform leg and on a
-developer's machine before pushing.
+behaviour of patches 7, 8, 11 and 12 is pinned on every platform leg and
+on a developer's machine before pushing.  Two of the cases are positive
+controls on the full model text — one base sort, one compound witness
+sort — so "rejects everything" fails as loudly as "accepts everything".
+
+The rules are all the same shape, so they are generated: the case table is
+in `gen_dune.ml`, `dune.inc` is promoted from it and kept honest by a
+runtest diff, and `(include dune.inc)` works at `(lang dune 2.0)`.  Adding
+a case is a line in the table plus its reply file.
 
 `regress/support/` holds the two executables the suites share:
 
@@ -303,12 +383,22 @@ developer's machine before pushing.
   convenience.  A wall-clock deadline cannot be spelled in the rule
   either — `timeout(1)` is coreutils and absent from stock macOS.
 
+  It runs the child in its own process group and signals the group at the
+  deadline: nunchaku spawns every backend through `/bin/sh -c`, so
+  killing its pid alone leaves the solvers running, reparented to init.
+
 The normalisation contract, which any new case is written against:
-`?__<n>` and `v_<n>/<m>` are renamed canonically **by first appearance**
-(`?__1 ?__2 …`, `v1 v2 …`), so two occurrences of the same unknown stay
-the same and two different ones stay different — the properties the
-goldens exist to guard — while the process-level counter is removed.
-`time:<t>s` becomes `time:Ns` and the whole `message="options: …"`
-payload becomes a fixed string, so a timing wobble or an edit to
-`Cvc5.options_l` does not churn every expected file.  Every case runs
-with `-j 1`.
+
+- `?__<n>` and every `name/<id>` variable spelling are renamed
+  canonically **by first appearance** (`?__1 ?__2 …`, `v1 v2 …`), so two
+  occurrences of the same unknown stay the same and two different ones
+  stay different — the properties the goldens exist to guard — while the
+  process-level counter is removed.
+- `time:<t>s` becomes `time:Ns`, and the whole `message="options: …"`
+  payload a fixed string, so a timing wobble does not churn every
+  expected file.
+- A run of identical adjacent entries in an `UNKNOWN (…)` list collapses
+  to one, and so does a run of identical adjacent warning blocks on
+  stderr: otherwise every golden would pin the number of option arms in
+  `Cvc5.options_l`, which is the same churn by another route.
+- Every case runs with `-j 1`.
