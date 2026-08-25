@@ -36,10 +36,11 @@ jobs:
       - run: opam exec -- dune runtest --profile=release
 
   # ---------------------------------------------------------------------------
-  # Release binaries.  Five platforms, two artifacts each (nunchaku and the
-  # smbc 0.5.3 bundles), ten release assets in total.  The naming contract and
-  # the reasoning behind it live in .github/scripts/release-attach.sh, which
-  # every leg calls, so there is exactly one definition of it.
+  # Release binaries.  Five platforms, two artifacts each -- the nunchaku binary
+  # and the smbc 0.6.1 the component bundles from 0.5.3 on -- so ten release
+  # assets in total.  The naming contract and the reasoning behind it live in
+  # .github/scripts/release-attach.sh, which every leg calls, so there is
+  # exactly one definition of it.
   #
   #   conda subdir    Isabelle platform   runner            toolchain
   #   linux-64        x86_64-linux        ubuntu-latest     musl-static
