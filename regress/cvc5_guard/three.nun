@@ -1,0 +1,7 @@
+# a countermodel needs at least 3 distinct elements of a_
+val a_ : type.
+val x_ : a_.
+val y_ : a_.
+val z_ : a_.
+
+goal ~ (x_ = y_ || y_ = z_ || x_ = z_).

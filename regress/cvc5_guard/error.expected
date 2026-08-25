@@ -1,0 +1,18 @@
+UNKNOWN
+(BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} cvc5 rejected `get-model-domain-elements`: `(error
+                                             "Parse Error: <stdin>:14.2: boom")` 
+ BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} cvc5 rejected `get-model-domain-elements`: `(error
+                                             "Parse Error: <stdin>:14.2: boom")` 
+ BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} cvc5 rejected `get-model-domain-elements`: `(error
+                                             "Parse Error: <stdin>:14.2: boom")` 
+ BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} cvc5 rejected `get-model-domain-elements`: `(error
+                                             "Parse Error: <stdin>:14.2: boom")` 
+ BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} cvc5 rejected `get-model-domain-elements`: `(error
+                                             "Parse Error: <stdin>:14.2: boom")`)
+--- stderr ---
+rc=0

@@ -18,12 +18,17 @@ type model_ty = FO.Ty.t
 
 module DSexp = Sexp_lib.Decoder
 
+(* [Error] is for nunchaku's own broken invariants; anything the solver sends
+   that we cannot understand is [Backend_err].  [read_res_] turns the latter
+   into [Res.Unknown [U_backend_error]], so one unusable reply costs this arm
+   and nothing else. *)
 exception Error of string
 exception Backend_err of string
 
 let error_ e = raise (Error e)
 let errorf_ fmt = CCFormat.ksprintf fmt ~f:error_
 let cvc5_error_ msg = raise (Backend_err msg)
+let backend_errorf_ fmt = CCFormat.ksprintf fmt ~f:cvc5_error_
 let cvc5_errorf_ msg = CCFormat.ksprintf ~f:cvc5_error_ "@[in cvc5:@ %s@]" msg
 
 let () =
@@ -205,13 +210,23 @@ let rec pp_gty ~decode out g =
         (pp_list ~sep:"_" (pp_gty ~decode))
         l
 
+(* The same ground type, spelled the way the problem printer's [pp_ty] declared
+   it to cvc5 -- which is how cvc5 echoes the sort of a domain element, as an
+   atom [a__] for a base sort and as a list [(to_ a_ b_)] for a compound one.
+   [pp_gty] above is a different, lossy spelling of the same type: it mangles
+   every non-alphanumeric character and flattens application to [_to__a__b__].
+   It is right for building cvc5's constant-name prefixes and wrong for
+   comparing against a reply, so the two must not be confused. *)
+let rec sexp_of_gty ~decode g : Sexp_lib.t =
+  match Ty.view g with
+  | FO.TyBuiltin b -> `Atom (CCFormat.sprintf "%a" pp_builtin_cvc5 b)
+  | FO.TyApp (id, []) -> `Atom (id_to_name ~decode id)
+  | FO.TyApp (id, l) ->
+      `List (`Atom (id_to_name ~decode id) :: List.map (sexp_of_gty ~decode) l)
+
 (* the prefix used by cvc5 for constants of the given type *)
 let const_of_ty ~decode gty =
   CCFormat.sprintf "@[<h>@@%a@]" (pp_gty ~decode) gty
-
-(* the i-th constant of the given type *)
-let const_of_ty_nth ~decode gty i =
-  CCFormat.sprintf "@[<h>%s_%d@]" (const_of_ty ~decode gty) i
 
 let get_ty_witness ~decode gty =
   try GTy_map.find gty decode.witnesses
@@ -586,42 +601,71 @@ let parse_simple_model_ ~decode ~env : Sexp_lib.t -> (_, _) Model.t = function
       in
       m
 
-let parse_domain_elems_ : Sexp_lib.t -> int = function
-  | `Atom _ -> error_ "expected list, got atom"
-  | `List assoc -> List.length assoc
+(* A domain element, as cvc5 prints it in the answer to
+   [get-model-domain-elements]: [(as NAME TY)], where TY is the SMT name of the
+   type being enumerated.  Nothing else is a domain element -- in particular
+   [(error "...")] is a two-atom list, so accepting bare atoms here would
+   silently turn an error reply into a two-element domain.  TY is compared as a
+   sexp, because for a compound sort cvc5 echoes a list. *)
+let parse_domain_elem_ ~decode ~gty : Sexp_lib.t -> string =
+  let expected_ty = sexp_of_gty ~decode gty in
+  function
+  | `List [ `Atom "as"; `Atom name; ty ] when ty = expected_ty -> name
+  | s ->
+      backend_errorf_ "expected a domain element `(as _ %a)`, got `%a`"
+        Sexp_lib.pp expected_ty Sexp_lib.pp s
+
+let parse_domain_elems_ ~decode ~gty : Sexp_lib.t -> string list = function
+  | `Atom _ as s ->
+      backend_errorf_ "expected a list of domain elements, got the atom `%a`"
+        Sexp_lib.pp s
+  | `List (`Atom "error" :: _ as l) ->
+      backend_errorf_ "cvc5 rejected `get-model-domain-elements`: `%a`"
+        Sexp_lib.pp (`List l)
+  | `List [] -> backend_errorf_ "cvc5 reported an empty domain"
+  | `List l ->
+      let names = List.map (parse_domain_elem_ ~decode ~gty) l in
+      (* the counter this parser replaces produced distinct names for free *)
+      if List.length (CCList.sort_uniq ~cmp:String.compare names)
+         < List.length names
+      then
+        backend_errorf_ "cvc5 reported a domain with repeated elements: `%a`"
+          Sexp_lib.pp (`List l);
+      names
 
 let get_finite_domain_ ~print_model decode s witness_id =
-  (* TODO: dedup *)
   let pp_id out i = CCFormat.string out (ID.Tbl.find decode.id_to_name i) in
   fpf s.fmt "(@[<hv2>get-model-domain-elements %a@])@." pp_id witness_id;
   match DSexp.next s.sexp with
-  | `Error e -> error_ e
-  | `End -> error_ "unexpected end of input from cvc5: expected model"
+  | `Error e -> cvc5_error_ e
+  | `End -> cvc5_error_ "unexpected end of input from cvc5: expected model"
   | `Ok sexp ->
       if print_model then
         Format.eprintf "@[raw domain elements:@ @[<hv>%a@]@]@." Sexp_lib.pp sexp;
       let gty = sym_get_ty_ ~decode witness_id in
       let ty = fobackty_of_ground_ty gty in
-      let n =
-        match sexp with
-        | `Atom _ -> error_ "expected list, got atom"
-        | `List assoc -> List.length assoc
+      let names = parse_domain_elems_ ~decode ~gty sexp in
+      (* Resolve a reported name without mutating [decode] first, so that a
+         rejected reply leaves no stray registration behind: [find_atom_]
+         installs a fresh [ID.make] for a name it has never seen, and is
+         therefore reached only after the name is known to be new -- which is
+         also what makes its [ID] result the only possible one. *)
+      let id_of_name name =
+        Utils.debugf ~section 3 "@[domain element: %s @]" (fun k -> k name);
+        match Hashtbl.find_opt decode.name_to_id name with
+        | Some (ID id) when ID.Tbl.mem decode.symbols id ->
+            backend_errorf_
+              "cvc5 reported `%s` as a domain element, but it is a symbol of \
+               the problem"
+              name
+        | Some (ID id) -> id
+        | Some (De_bruijn _ | DataTest _ | DataSelect _) ->
+            backend_errorf_ "not a valid domain element name: %s" name
+        | None -> (
+            match find_atom_ ~decode name with ID id -> id | _ -> assert false)
       in
-      let terms =
-        Iter.(
-          0 -- (n - 1)
-          |> map (fun i ->
-                 let name = const_of_ty_nth ~decode gty i in
-                 Utils.debugf ~section 3 "@[building name: %s @]" (fun k ->
-                     k name);
-                 let id =
-                   match find_atom_ ~decode name with
-                   | ID id -> id
-                   | _ -> assert false
-                 in
-                 id)
-          |> to_rev_list)
-      in
+      (* [rev_map] reproduces the order the counting code built by [to_rev_list] *)
+      let terms = List.rev_map id_of_name names in
       (ty, terms)
 
 let send_get_simple_model_ out decode =
@@ -694,7 +738,8 @@ let read_res_ ~info ~print_model ~decode ~env s =
             sexp
         in
         Res.Unknown [ Res.U_backend_error (Lazy.force info, msg) ]
-    | `Error e -> Res.Error (Error e, Lazy.force info)
+    (* a reply we cannot even tokenise is still the solver's doing, not ours *)
+    | `Error e -> Res.Unknown [ Res.U_backend_error (Lazy.force info, e) ]
     | `End ->
         Utils.debug ~section 5 "no answer from cvc5, assume it timeouted";
         Res.Unknown [ Res.U_timeout (Lazy.force info) ]

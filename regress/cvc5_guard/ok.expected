@@ -1,0 +1,10 @@
+SAT: {
+  type a_ := {$a__0, $a__1, $a__2}.
+  val z_ := $a__0.
+  val y_ := $a__1.
+  val x_ := $a__2.
+}
+{backend:cvc5, time:Ns,
+  message="options: OPTIONS"}
+--- stderr ---
+rc=0

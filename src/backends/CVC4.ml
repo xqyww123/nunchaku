@@ -690,7 +690,8 @@ let read_res_ ~info ~print_model ~decode s =
           Sexp_lib.pp sexp
       in
       Res.Unknown [Res.U_backend_error (Lazy.force info, msg)]
-    | `Error e -> Res.Error (Error e, Lazy.force info)
+    (* a reply we cannot even tokenise is still the solver's doing, not ours *)
+    | `Error e -> Res.Unknown [Res.U_backend_error (Lazy.force info, e)]
     | `End ->
       Utils.debug ~section 5 "no answer from CVC4, assume it timeouted";
       Res.Unknown [Res.U_timeout (Lazy.force info)]

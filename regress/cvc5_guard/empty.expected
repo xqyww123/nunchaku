@@ -1,0 +1,13 @@
+UNKNOWN
+(BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} cvc5 reported an empty domain 
+ BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} cvc5 reported an empty domain 
+ BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} cvc5 reported an empty domain 
+ BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} cvc5 reported an empty domain 
+ BACKEND_ERROR {backend:cvc5, time:Ns,
+                 message="options: OPTIONS"} cvc5 reported an empty domain)
+--- stderr ---
+rc=0

@@ -1,0 +1,5 @@
+; support executables for the hermetic regression suites (regress/cvc5_guard,
+; regress/smbc_models): a canned-reply fake solver and the golden-file driver.
+(executables
+ (names fake_solver run_case)
+ (libraries str unix))
