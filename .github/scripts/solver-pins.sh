@@ -63,3 +63,22 @@ pin_platforms () {  # the Isabelle platform ids a release covers, one per line
   }
   printf '%s\n' "$out"
 }
+
+# One definition of "take a sha256", because the two runners' coreutils differ:
+# linux and Cygwin ship sha256sum, macOS ships shasum.  Both print
+# "<hex>  <name>", which is the format `sha256sum -c` and `shasum -c` read, so
+# a sidecar written on one platform verifies on another.
+sha256_of () {
+  if command -v sha256sum > /dev/null 2>&1
+  then sha256sum "$@"
+  else shasum -a 256 "$@"
+  fi
+}
+
+# Verify a "<hex>  <name>" line, whichever tool this platform has.
+sha256_check () {
+  if command -v sha256sum > /dev/null 2>&1
+  then sha256sum -c "$@"
+  else shasum -a 256 -c "$@"
+  fi
+}

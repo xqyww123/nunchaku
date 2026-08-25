@@ -25,6 +25,11 @@ EXE=${EXE:-}
 
 die () { echo "::error::${0##*/}: $*"; exit 1; }
 
+# sha256_of lives in solver-pins.sh so the digest tool has one definition
+# across the scripts that need it (release-fetch-cvc5.sh is the other).
+# shellcheck source=.github/scripts/solver-pins.sh
+. "$SRC_ROOT/.github/scripts/solver-pins.sh"
+
 version=$(cat "$SRC_ROOT/VERSION")
 gold="$SRC_ROOT/regress/gold.nun"
 [ -f "$gold" ] || die "$gold not found"
@@ -208,19 +213,13 @@ cat "$PWD/versions-$ISA_PLATFORM.txt"
 # is the only end-to-end check on the binary's bytes at all: no job on either
 # side ever executes a Cygwin binary, so the packaging side's content check is
 # otherwise the two bytes `MZ`.
-# coreutils spells it sha256sum (linux, Cygwin); macOS ships shasum instead.
-# Both print "<hex>  <name>", which is the format `sha256sum -c` reads.
-sha256_of () {
-  if command -v sha256sum > /dev/null 2>&1
-  then sha256sum "$@"
-  else shasum -a 256 "$@"
-  fi
-}
 # Digest the script's own INPUTS, not a pair of bare names in $PWD: on the
 # win-64 leg the binaries are $WS/artifacts/*.exe and the bare names do not
-# exist until a later step, so hashing by name reddened that leg at the end of
-# a five-hour run.  Hashing the inputs also makes the digested file the same
-# file the smoke just drove, which hashing a copy would not guarantee.
+# exist until a step that runs after this one, so hashing by name would fail
+# that leg -- measured by running this block in a reconstructed win-64
+# workspace, not on a runner; no leg of this workflow has run yet.  Hashing the
+# inputs also makes the digested file the same file the smoke just drove, which
+# hashing a copy would not guarantee.
 # The sidecar records the RELEASED stem, because that is the name
 # release-attach.sh verifies it under.
 digest () {  # <source path> <released stem>

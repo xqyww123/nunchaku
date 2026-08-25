@@ -37,12 +37,7 @@ die () { echo "::error::${0##*/}: $*"; exit 1; }
 curl -fsSL --retry 3 -o cvc5.zip \
   "https://github.com/cvc5/cvc5/releases/download/cvc5-$CVC5_VERSION/$asset.zip"
 
-# macOS runners have no sha256sum; every platform has one of the two.
-if command -v sha256sum > /dev/null 2>&1; then
-  echo "$sha  cvc5.zip" | sha256sum -c
-else
-  echo "$sha  cvc5.zip" | shasum -a 256 -c
-fi
+echo "$sha  cvc5.zip" | sha256_check -
 
 unzip -q -o cvc5.zip
 [ -f "$asset/bin/cvc5" ] || die "$asset/bin/cvc5 is not in the archive"

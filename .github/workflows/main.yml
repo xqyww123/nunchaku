@@ -14,12 +14,15 @@ on:
   # twenty-five-asset contract check in release-assets' collect step, which is
   # deliberately not tag-gated.
   #
-  # What a dispatch CANNOT reach is `release-attach.sh publish`: it asserts
-  # that the tag equals the VERSION file before its first gh call, so a
-  # throwaway pre-release tag dies there having done nothing.  Its first
-  # execution is therefore the real tag push.  That is a stated limit, not an
-  # oversight -- RELEASE_CHECKLIST.md section 9 step 1 in isabelle-packaging-ci
-  # lists exactly which gh calls it covers and which it does not, and step 3
+  # What a dispatch does not reach is `release-attach.sh publish`: the step
+  # that runs it is guarded by `startsWith(github.ref, 'refs/tags/v')`, so on a
+  # branch ref it is skipped, and a dispatch on a *pre-release* tag would reach
+  # the step only to die on the tag-vs-VERSION assertion inside the script,
+  # having made no gh call.  A dispatch on the release tag itself does reach
+  # publish -- that is the tag push by another name, not a rehearsal.  So the
+  # five gh calls first run for real at the tag: a stated limit, not an
+  # oversight.  RELEASE_CHECKLIST.md section 9 step 1 in isabelle-packaging-ci
+  # lists which of them a rehearsal covers and which it does not, and step 3
   # says what to do when one of them fails.
   workflow_dispatch:
 

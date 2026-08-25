@@ -232,8 +232,25 @@ $ids"
     # compares the two.  Recovery for a published release is a new patch
     # version, not a second pass over this one (RELEASE_CHECKLIST.md section 9
     # step 3).
-    [ "$draft" = true ] \
-      || die "the release for $TAG is already published; a re-run would replace its assets with freshly built, differing binaries -- fix forward with a new patch version instead (RELEASE_CHECKLIST.md section 9 step 3)"
+    if [ "$draft" != true ]; then
+      # Published already.  That is either "this job finished and is being
+      # re-run", in which case the release carries exactly the contract and
+      # there is nothing left to do, or "freshly built, differing binaries are
+      # about to replace a published release's assets", which must not happen:
+      # the conda channel's immutable packages would then be certified by bytes
+      # the release no longer serves.  The contract diff tells the two apart,
+      # so ask it rather than refusing both.
+      gh api --paginate "repos/$GITHUB_REPOSITORY/releases" \
+        --jq '.[] | select(.tag_name == env.TAG) | .assets[].name' \
+        | sort > uploaded.txt
+      printf '%s\n' "$names" | sort > contract.txt
+      if diff -q contract.txt uploaded.txt > /dev/null; then
+        echo "$TAG is already published and carries exactly the $(wc -l < contract.txt) contracted assets; nothing to do"
+        exit 0
+      fi
+      diff -u contract.txt uploaded.txt || true
+      die "the release for $TAG is already published and does not carry the contract; its assets must not be replaced with freshly built, differing binaries -- fix forward with a new patch version (RELEASE_CHECKLIST.md section 9 step 3)"
+    fi
 
     # --clobber is KEPT, deliberately.  The recovery path RELEASE_CHECKLIST.md
     # prescribes for a red job is "re-run failed jobs", and a re-run reuses the
@@ -262,6 +279,6 @@ $ids"
     ;;
 
   *)
-    die "usage: ${0##*/} --list <platform> | collect <download-dir> | publish"
+    die "usage: ${0##*/} --list <platform> | collect <download-dir> | publish -- run from the fork checkout, or set SRC_ROOT to it: every subcommand reads component/solvers.pins through .github/scripts/solver-pins.sh"
     ;;
 esac
