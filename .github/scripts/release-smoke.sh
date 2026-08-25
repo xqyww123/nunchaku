@@ -216,11 +216,20 @@ sha256_of () {
   else shasum -a 256 "$@"
   fi
 }
-for stem in nunchaku-bin smbc-bin; do
-  [ -s "$PWD/$stem" ] || die "$stem is not staged next to the smoke -- the leg cannot digest what it built"
-  ( cd "$PWD" && sha256_of "$stem" > "$stem.sha256" )
-  cat "$PWD/$stem.sha256"
-done
+# Digest the script's own INPUTS, not a pair of bare names in $PWD: on the
+# win-64 leg the binaries are $WS/artifacts/*.exe and the bare names do not
+# exist until a later step, so hashing by name reddened that leg at the end of
+# a five-hour run.  Hashing the inputs also makes the digested file the same
+# file the smoke just drove, which hashing a copy would not guarantee.
+# The sidecar records the RELEASED stem, because that is the name
+# release-attach.sh verifies it under.
+digest () {  # <source path> <released stem>
+  [ -s "$1" ] || die "$1 is missing -- the leg cannot digest what it built"
+  printf '%s  %s\n' "$(sha256_of "$1" | cut -d' ' -f1)" "$2" > "$PWD/$2.sha256"
+  cat "$PWD/$2.sha256"
+}
+digest "$NUNCHAKU_SRC" nunchaku-bin
+digest "$SMBC_SRC" smbc-bin
 
 echo
 echo "smoke OK for $ISA_PLATFORM"

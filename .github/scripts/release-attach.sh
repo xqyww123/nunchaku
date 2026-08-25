@@ -90,7 +90,7 @@ if [ "${1-}" = --list ]; then
   # Validated against the pins table: an operator following section 9 step 1
   # types this by hand, and an unknown platform would otherwise print a
   # plausible five-line contract for a platform the release does not have.
-  pin_platforms | grep -Fqx "$want" \
+  pin_platforms | grep -Fqx -- "$want" \
     || die "unknown platform '$want'; component/solvers.pins names: $(pin_platforms | tr '\n' ' ')"
   asset_names "$want"
   exit 0

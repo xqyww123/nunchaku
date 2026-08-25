@@ -76,7 +76,7 @@ jobs:
   # .sha256 SIDECARS and FIVE versions-<platform>.txt records: twenty-five
   # release assets.  The naming contract and the reasoning behind it live in
   # .github/scripts/release-attach.sh.  These two job families do NOT touch the
-  # GitHub release: each leg uploads its three files as a run artifact, and the
+  # GitHub release: each leg uploads its five files as a run artifact, and the
   # release-assets job below assembles, asserts and publishes all twenty-five in
   # one place (release-attach.sh's header explains why that is not five places).
   #
@@ -437,7 +437,7 @@ jobs:
           # Listing them here turns a missing tool into a one-line diagnosis at
           # minute five instead of a confusing failure at minute two hundred
           # and fifty.
-          & $env:BASH_EXE --login -c 'set -e; for t in opam gcc make m4 patch unzip git strip install tr od file cygcheck; do test -x /usr/bin/$t || { echo "MISSING /usr/bin/$t"; exit 1; }; done; /usr/bin/opam --version; /usr/bin/gcc --version | head -1; /usr/bin/git --version'
+          & $env:BASH_EXE --login -c 'set -e; for t in opam gcc make m4 patch unzip git strip install tr od file cygcheck sha256sum; do test -x /usr/bin/$t || { echo "MISSING /usr/bin/$t"; exit 1; }; done; /usr/bin/opam --version; /usr/bin/gcc --version | head -1; /usr/bin/git --version'
           exit $LASTEXITCODE
 
       - name: Restore opam root cache
@@ -554,7 +554,7 @@ jobs:
           overwrite: true   # see the unix leg's upload
 
   # ---------------------------------------------------------------------------
-  # The release assets.  The five build legs upload their three files as run
+  # The release assets.  The five build legs upload their five files as run
   # artifacts and touch nothing else; this job turns those artifacts into the
   # twenty-five contracted release assets, asserts that it got exactly them, and
   # -- on a tag push only -- creates the release, uploads, re-asserts and takes
@@ -585,6 +585,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write   # the only job in this workflow that writes a release
+      # Read-only, and here BEFORE it is needed: recovery from a red
+      # release-assets is "re-run failed jobs", which re-runs this job alone in
+      # a new attempt while the build legs' artifacts belong to the previous
+      # one.  Reaching across attempts needs `actions: read` and a token, and a
+      # tag re-run uses the workflow file from the tagged commit -- so adding
+      # them during the incident is not possible without moving the tag.
+      actions: read
     steps:
       - uses: actions/checkout@v4
 
@@ -596,6 +603,10 @@ jobs:
           # here rather than a four-fifths release.
           pattern: nunchaku-*
           path: dl
+          # Lets a re-run of this job alone reach the artifacts the build legs
+          # uploaded in the previous attempt; without it the download 404s and
+          # the recovery path the release procedure prescribes does not exist.
+          github-token: ${{ github.token }}
 
       - name: Assemble and assert the twenty-five release assets
         run: .github/scripts/release-attach.sh collect dl
