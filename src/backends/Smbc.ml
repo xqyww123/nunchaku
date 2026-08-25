@@ -1115,7 +1115,15 @@ let parse_res ~env ~info (out:string) (errcode:int): (term,ty) Res.t * S.shortcu
       let res = Tip_parser.parse_smbc_res Tip_lexer.token lexbuf in
       convert_res ~env ~info res
     with e ->
-      Res.Error (e,info), S.Shortcut
+      (* Being unable to read smbc's output is a backend error, exactly like
+         the non-zero exit code above.  Reporting it as [Res.Error] with a
+         shortcut is worse than a crash of smbc itself: it stops the sibling
+         backends, so a cvc5 answer to the same problem is lost to a defect
+         in smbc's output. *)
+      let msg =
+        Printf.sprintf "could not read smbc's output: %s" (Printexc.to_string e)
+      in
+      Res.Unknown [Res.U_backend_error (info, msg)], S.No_shortcut
   )
 
 (** {2 Main Solving} *)
