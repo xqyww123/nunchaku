@@ -1099,7 +1099,7 @@ repro, as "the same number".
   were produced: all 79 captured problems give the same first line before and
   after.
 
-## 23. One `TypeCheck` instance, not one per transformation (commit: TBD)
+## 23. One `TypeCheck` instance, not one per transformation (commit: `c27d1fd`)
 
 - **Motivation**: every transformation's `~check` callback is
   `fun () -> let module C = TypeCheck.Make(T) in C.empty () |> C.check_problem`,
@@ -1138,8 +1138,11 @@ repro, as "the same number".
   every future transformation to remember that `singleton_if` is eager.
   Nineteen call sites did not.
 
-## 24. "Is this solver there?" is asked in process, and once (commit: TBD)
+## 24. "Is this solver there?" is asked in process, and once (commits: `16cc105`, `45273de`)
 
+- **Two hashes**: the source change landed inside `16cc105`, a concurrent
+  commit in the same working tree that staged everything; `45273de` is this
+  entry.  Recorded rather than rewritten, because the tree is shared.
 - **Motivation**: `Utils.external_program_available` answered by running
   `Sys.command "test -f … && test -x …"` (or `command -v …` for a bare name),
   which forks and execs `/bin/sh` to stat one file.  Worse, the question was
@@ -1185,7 +1188,7 @@ repro, as "the same number".
   machine load; a 40-round interleaved run of the two builds on that goal
   alone gives 5 of 40 before and 6 of 40 after.
 
-## 25. What the order of `Cvc5.options_l` means, in the source (commit: TBD)
+## 25. What the order of `Cvc5.options_l` means, in the source (commit: `a4adf3e`)
 
 - **Motivation**: `options_l` reads like a *set* of cvc5 configurations to try
   and is treated like a *priority queue that the pool then starves*.  Three
@@ -1229,7 +1232,7 @@ repro, as "the same number".
   its arithmetic unmeasured would be exactly the silent re-tune the note
   warns about.  The note says so where a reader of that file will find it.
 
-## 26. smbc's `--check` is pinned by a test, not by luck (commit: TBD)
+## 26. smbc's `--check` is pinned by a test, not by luck (commit: `152a26e`)
 
 - **Motivation**: `Smbc.ml` passes `--check` on smbc's command line, and
   nothing in the tree said what that word is worth.  It gates
@@ -1266,7 +1269,7 @@ repro, as "the same number".
   encoding, and it will drift; the case would still fail if the flag went
   away, which is the only thing it claims.
 
-## 27. A cvc5 fault costs cvc5's arm, not the race (commit: TBD)
+## 27. A cvc5 fault costs cvc5's arm, not the race (commit: `6c6af68`)
 
 - **Motivation**: §18 established that one failing backend must not discard
   the others' answers, and fixed the half of it that lives in the scheduler.
